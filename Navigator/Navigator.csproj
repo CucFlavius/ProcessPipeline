@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>ProcessPipeline</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="LibVLCSharp" Version="3.9.1" />
+      <PackageReference Include="Microsoft.ML" Version="4.0.0" />
+      <PackageReference Include="Microsoft.ML.ImageAnalytics" Version="4.0.0" />
+      <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+      <PackageReference Include="Microsoft.ML.Vision" Version="4.0.0" />
+      <PackageReference Include="Silk.NET.Core" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Input.Extensions" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.22.0" />
+      <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
+      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
+      <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="resources\Shaders\GLSL\imgui-frag.glsl" />
+      <None Remove="resources\Shaders\GLSL\imgui-vertex.glsl" />
+      <None Remove="resources\Shaders\HLSL\imgui-frag.hlsl.bytes" />
+      <None Remove="resources\Shaders\HLSL\imgui-vertex.hlsl.bytes" />
+      <None Remove="resources\Shaders\SPIR-V\imgui-frag.spv" />
+      <None Remove="resources\Shaders\SPIR-V\imgui-vertex.spv" />
+      <None Remove="resources\Shaders\Metal\imgui-frag.metallib" />
+      <None Remove="resources\Shaders\Metal\imgui-vertex.metallib" />
+    </ItemGroup>
+
+</Project>
