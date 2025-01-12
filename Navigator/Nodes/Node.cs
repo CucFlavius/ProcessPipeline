@@ -160,8 +160,7 @@ namespace ProcessPipeline.Nodes
                 uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
                 //drawList.AddCircle(portPos, portRadius, portColor);
                 drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                drawList.AddText(portPos + new Vector2(10, -8 * zoomLevel), portColor, input.Name);
+                drawList.AddText(portPos + new Vector2(10 * zoomLevel, -8 * zoomLevel), portColor, input.Name);
 
                 // Handle interaction for port (e.g., initiating a connection)
                 // Use ImGui's InvisibleButton to detect clicks
@@ -189,7 +188,8 @@ namespace ProcessPipeline.Nodes
                 uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
                 //drawList.AddCircle(portPos, portRadius, portColor);
                 drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                drawList.AddText(portPos + new Vector2(-50, -8 * zoomLevel), portColor, output.Name);
+                Vector2 contentTextSize = ImGui.CalcTextSize(output.Name);
+                drawList.AddText(portPos + new Vector2(-(10 * zoomLevel) - contentTextSize.X, -8 * zoomLevel), portColor, output.Name);
 
                 // Handle interaction for port (e.g., initiating a connection)
                 ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
