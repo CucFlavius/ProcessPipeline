@@ -17,6 +17,7 @@ public class Pipeline
 
     // Dragging connection state
     private NodePort _draggingPort;
+    private Node _draggingNodePort;
     private bool _isDragging;
     private Vector2 _draggingPos;
 
@@ -38,13 +39,14 @@ public class Pipeline
     /// <summary>
     /// Callback invoked when a port is clicked.
     /// </summary>
-    private void OnPortClicked(NodePort port)
+    private void OnPortClicked(NodePort port, Node node)
     {
         if (!_isDragging)
         {
             // Start dragging from this port
             _isDragging = true;
             _draggingPort = port;
+            _draggingNodePort = node;
             _draggingPos = ImGui.GetIO().MousePos;
         }
         else
@@ -160,7 +162,22 @@ public class Pipeline
         // Render temporary connection line if dragging
         if (_isDragging && _draggingPort != null)
         {
-            Vector2 startPos = _draggingPort.GetScreenPosition(canvasPos, _gridPosition, _zoomLevel, new Vector2(200, 300) * _zoomLevel, 0, 0); // Placeholder indices
+            int index = -1;
+            if (_draggingPort is InputPort)
+            {
+                index = _draggingNodePort.Inputs.IndexOf(_draggingPort as InputPort);
+            }
+            else if (_draggingPort is OutputPort)
+            {
+                index = _draggingNodePort.Outputs.IndexOf(_draggingPort as OutputPort);
+            }
+            Vector2 startPos = _draggingPort.GetScreenPosition(canvasPos,
+                _gridPosition,
+                _zoomLevel,
+                new Vector2(200,
+                    300) *
+                _zoomLevel,
+                index); // Placeholder indices
 
             Vector2 endPos = ImGui.GetIO().MousePos;
 

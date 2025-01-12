@@ -12,6 +12,8 @@ namespace ProcessPipeline.Nodes
         {
             From = from;
             To = to;
+            
+            Console.WriteLine($"Created connection from {from.ID} to {to.ID}");
         }
 
         /// <summary>
@@ -23,8 +25,10 @@ namespace ProcessPipeline.Nodes
             Vector2 nodeSize = new Vector2(200, 300) * zoomLevel;
 
             // Get screen positions of the ports
-            Vector2 fromPos = From.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, 0, 0); // index and total not needed here
-            Vector2 toPos = To.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, 0, 0);
+            var fromIndex = From.ParentNode.Outputs.IndexOf(From);
+            var toIndex = To.ParentNode.Inputs.IndexOf(To);
+            Vector2 fromPos = From.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, fromIndex); // index and total not needed here
+            Vector2 toPos = To.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, toIndex);
 
             // Draw a bezier curve between fromPos and toPos
             drawList.AddBezierCubic(

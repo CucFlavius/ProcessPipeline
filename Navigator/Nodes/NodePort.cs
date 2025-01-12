@@ -15,7 +15,7 @@ namespace ProcessPipeline.Nodes
         public PortType Type { get; set; }
         public Node ParentNode { get; set; }
         public uint ID { get; set; } // Unique identifier
-
+        
         public NodePort(string name, PortType type, Node parent)
         {
             Name = name;
@@ -34,7 +34,7 @@ namespace ProcessPipeline.Nodes
         /// <summary>
         /// Calculates the screen position of the port based on the node's position, canvas position, zoom level, and port index.
         /// </summary>
-        public Vector2 GetScreenPosition(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel, Vector2 nodeSize, int index, int total)
+        public Vector2 GetScreenPosition(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel, Vector2 nodeSize, int index)
         {
             // Calculate the position of the port on the node
             // For input ports, place on the left; for output, on the right
@@ -52,6 +52,11 @@ namespace ProcessPipeline.Nodes
                 xPos = canvasPos.X + gridPosition.X + ParentNode._nodePos.X * zoomLevel - (10 * zoomLevel) + nodeSize.X;
 
             return new Vector2(xPos, yPos);
+        }
+        
+        public ReadOnlySpan<char> GetPortName()
+        {
+            return $"{Name} {ID}".AsSpan();
         }
     }
 

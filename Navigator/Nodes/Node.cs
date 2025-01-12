@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace ProcessPipeline.Nodes
 {
-    public delegate void PortClickedHandler(NodePort port);
+    public delegate void PortClickedHandler(NodePort port, Node node);
     
     public abstract class Node
     {
@@ -154,13 +154,13 @@ namespace ProcessPipeline.Nodes
             foreach (var input in Inputs)
             {
                 // Calculate position for the input port
-                Vector2 portPos = input.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, inputIndex, Inputs.Count);
+                Vector2 portPos = input.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, inputIndex);
                 // Render the input port as a small circle
                 float portRadius = 5.0f * zoomLevel;
                 uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
                 //drawList.AddCircle(portPos, portRadius, portColor);
                 drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                drawList.AddText(portPos + new Vector2(10 * zoomLevel, -8 * zoomLevel), portColor, input.Name);
+                drawList.AddText(portPos + new Vector2(10 * zoomLevel, -8 * zoomLevel), portColor, input.GetPortName());
 
                 // Handle interaction for port (e.g., initiating a connection)
                 // Use ImGui's InvisibleButton to detect clicks
@@ -171,7 +171,7 @@ namespace ProcessPipeline.Nodes
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 {
                     // Invoke the port clicked handler
-                    _portClickedHandler?.Invoke(input);
+                    _portClickedHandler?.Invoke(input, this);
                 }
 
                 inputIndex++;
@@ -182,14 +182,14 @@ namespace ProcessPipeline.Nodes
             foreach (var output in Outputs)
             {
                 // Calculate position for the output port
-                Vector2 portPos = output.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, outputIndex, Outputs.Count);
+                Vector2 portPos = output.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, outputIndex);
                 // Render the output port as a small circle
                 float portRadius = 5.0f * zoomLevel;
                 uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
                 //drawList.AddCircle(portPos, portRadius, portColor);
                 drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                Vector2 contentTextSize = ImGui.CalcTextSize(output.Name);
-                drawList.AddText(portPos + new Vector2(-(10 * zoomLevel) - contentTextSize.X, -8 * zoomLevel), portColor, output.Name);
+                Vector2 contentTextSize = ImGui.CalcTextSize(output.GetPortName());
+                drawList.AddText(portPos + new Vector2(-(10 * zoomLevel) - contentTextSize.X, -8 * zoomLevel), portColor, output.GetPortName());
 
                 // Handle interaction for port (e.g., initiating a connection)
                 ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
@@ -199,7 +199,7 @@ namespace ProcessPipeline.Nodes
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 {
                     // Invoke the port clicked handler
-                    _portClickedHandler?.Invoke(output);
+                    _portClickedHandler?.Invoke(output, this);
                 }
 
                 outputIndex++;
