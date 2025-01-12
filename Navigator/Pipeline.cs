@@ -32,8 +32,10 @@ public class Pipeline
         _connections = new List<Connection>();
 
         // Initialize nodes with custom content
-        Nodes.Add(Node.GenerateNodeID(), new LabelNode("Hello World", new Vector2(-325, -125), OnPortClicked));
-        Nodes.Add(Node.GenerateNodeID(), new ButtonNode("Click Me", new Vector2(100, 100), OnPortClicked));
+        //Nodes.Add(Node.GenerateNodeID(), new LabelNode("Hello World", new Vector2(-325, -125), OnPortClicked));
+        //Nodes.Add(Node.GenerateNodeID(), new ButtonNode("Click Me", new Vector2(100, 100), OnPortClicked));
+        //var node = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
+        //Nodes.Add(node.ID, node);
     }
     
     /// <summary>
@@ -54,20 +56,35 @@ public class Pipeline
             // Finish dragging and attempt to create a connection
             if (IsCompatible(_draggingPort, port))
             {
-                if (_draggingPort.Type == PortType.Output && port.Type == PortType.Input)
+                if (_draggingPort.PType == PortType.Output && port.PType == PortType.Input)
                 {
                     // Prevent multiple connections to the same input port
                     var existingConnection = _connections.Find(c => c.To == port);
                     if (existingConnection != null)
                     {
+                        existingConnection.To.IsConnected = false;
+                        existingConnection.To.ConnectedPort = null;
+                        existingConnection.From.IsConnected = false;
+                        existingConnection.From.ConnectedPort = null;
                         _connections.Remove(existingConnection);
                     }
 
                     _connections.Add(new Connection((OutputPort)_draggingPort, (InputPort)port));
                 }
-                else if (_draggingPort.Type == PortType.Input && port.Type == PortType.Output)
+                else if (_draggingPort.PType == PortType.Input && port.PType == PortType.Output)
                 {
                     _connections.Add(new Connection((OutputPort)port, (InputPort)_draggingPort));
+                    
+                    // Prevent multiple connections to the same input port
+                    var existingConnection = _connections.Find(c => c.To == _draggingPort);
+                    if (existingConnection != null)
+                    {
+                        existingConnection.To.IsConnected = false;
+                        existingConnection.To.ConnectedPort = null;
+                        existingConnection.From.IsConnected = false;
+                        existingConnection.From.ConnectedPort = null;
+                        _connections.Remove(existingConnection);
+                    }
                 }
             }
 
@@ -82,10 +99,14 @@ public class Pipeline
     /// </summary>
     private bool IsCompatible(NodePort from, NodePort to)
     {
+        // Define DataType compatibility rules, e.g., String to String only
+        if (from.DType != to.DType)
+            return false;
+        
         // Define compatibility rules, e.g., Output to Input only
-        if (from.Type == PortType.Output && to.Type == PortType.Input)
+        if (from.PType == PortType.Output && to.PType == PortType.Input)
             return true;
-        if (from.Type == PortType.Input && to.Type == PortType.Output)
+        if (from.PType == PortType.Input && to.PType == PortType.Output)
             return true;
         return false;
     }
@@ -103,7 +124,7 @@ public class Pipeline
 
         // Begin child region
         ImGui.BeginChild("Canvas", contentSize, ImGuiChildFlags.None, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-
+        
         // Get the top-left position of the drawable area
         Vector2 canvasPos = ImGui.GetCursorScreenPos();
 
@@ -150,6 +171,11 @@ public class Pipeline
             _gridPosition += (newMousePosInGrid - mousePosInGrid) * _zoomLevel;
         }
 
+        uint backgroundColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.6f, 0.6f, 0.6f, 1.0f)); // Light gray background
+
+        // Draw the background
+        drawList.AddRectFilled(canvasPos, canvasPos + contentSize, backgroundColor);
+        
         // Render the grid
         _infiniteGrid.Render(canvasPos, _gridPosition, _zoomLevel, contentSize);
         
@@ -199,9 +225,31 @@ public class Pipeline
         }
 
         ImGui.EndChild();
-
+        
         // Reset font
         ImGui.PopFont();
+        
+        // Implement context menu
+        if (ImGui.BeginPopupContextItem($"Popup_Canvas"))
+        {
+            if (ImGui.MenuItem("Add Text Input Node"))
+            {
+                // Calculate mouse position relative to the canvas
+                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
+                
+                var node = new TextInputNode(mousePosInGrid, OnPortClicked);
+                Nodes.Add(node.ID, node);
+            }
+            if (ImGui.MenuItem("Add Label Node"))
+            {
+                // Calculate mouse position relative to the canvas
+                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
+                
+                var node = new LabelNode(string.Empty, mousePosInGrid, OnPortClicked);
+                Nodes.Add(node.ID, node);
+            }
+            ImGui.EndPopup();
+        }
 
         ImGui.End();
     }

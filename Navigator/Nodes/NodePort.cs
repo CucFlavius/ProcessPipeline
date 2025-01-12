@@ -9,17 +9,28 @@ namespace ProcessPipeline.Nodes
         Output
     }
 
+    public enum DataType
+    {
+        String,
+    }
+
     public class NodePort
     {
         public string Name { get; set; }
-        public PortType Type { get; set; }
+        public PortType PType { get; set; }
+        public DataType DType { get; set; }
         public Node ParentNode { get; set; }
+        
+        public bool IsConnected { get; set; }
+        public NodePort? ConnectedPort { get; set; }
+        
         public uint ID { get; set; } // Unique identifier
         
-        public NodePort(string name, PortType type, Node parent)
+        public NodePort(string name, PortType pType, DataType dType, Node parent)
         {
             Name = name;
-            Type = type;
+            PType = pType;
+            DType = dType;
             ParentNode = parent;
             ID = GeneratePortID();
         }
@@ -43,13 +54,13 @@ namespace ProcessPipeline.Nodes
             //float spacing = nodeSize.Y / (total + 1);
             //float yPos = ParentNode._nodePos.Y * zoomLevel + spacing * (index + 1) + canvasPos.Y + gridPosition.Y;
             float nodeSpacing = 20 * zoomLevel;
-            float yPos = ParentNode._nodePos.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
+            float yPos = ParentNode.NodePos.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
             
             float xPos;
-            if (Type == PortType.Input)
-                xPos = canvasPos.X + gridPosition.X + ParentNode._nodePos.X * zoomLevel + (10 * zoomLevel);
+            if (PType == PortType.Input)
+                xPos = canvasPos.X + gridPosition.X + ParentNode.NodePos.X * zoomLevel + (10 * zoomLevel);
             else // Output
-                xPos = canvasPos.X + gridPosition.X + ParentNode._nodePos.X * zoomLevel - (10 * zoomLevel) + nodeSize.X;
+                xPos = canvasPos.X + gridPosition.X + ParentNode.NodePos.X * zoomLevel - (10 * zoomLevel) + nodeSize.X;
 
             return new Vector2(xPos, yPos);
         }
@@ -62,15 +73,21 @@ namespace ProcessPipeline.Nodes
 
     public class InputPort : NodePort
     {
-        public InputPort(string name, Node parent) : base(name, PortType.Input, parent)
+        public Action<object> setData { get; set; }
+        
+        public InputPort(string name, DataType dType, Node parent, Action<object> setData) : base(name, PortType.Input, dType, parent)
         {
+            this.setData = setData;
         }
     }
 
     public class OutputPort : NodePort
     {
-        public OutputPort(string name, Node parent) : base(name, PortType.Output, parent)
+        public Func<object?> getData { get; set; }
+        
+        public OutputPort(string name, DataType dType, Node parent, Func<object?> data) : base(name, PortType.Output, dType, parent)
         {
+            getData = data;
         }
     }
 }

@@ -10,7 +10,8 @@ namespace ProcessPipeline.Nodes
     {
         public static uint IDCounter = 1; // Static counter for unique node IDs
         public uint ID { get; private set; }
-        public Vector2 _nodePos;
+        public Vector2 NodePos;
+        public Vector2 NodeSize;
         protected string _title; // Title of the node
         protected bool _isSelected = false; // Tracks if the node is selected
 
@@ -22,7 +23,8 @@ namespace ProcessPipeline.Nodes
 
         public Node(Vector2 pos, PortClickedHandler portClickedHandler)
         {
-            _nodePos = pos;
+            NodePos = pos;
+            NodeSize = new Vector2(200, 300);
             _title = "Node";
             Inputs = new List<InputPort>();
             Outputs = new List<OutputPort>();
@@ -34,17 +36,17 @@ namespace ProcessPipeline.Nodes
         /// <summary>
         /// Adds an input port to the node.
         /// </summary>
-        public void AddInput(string name)
+        public void AddInput(string name, DataType dataType, Action<object> setData)
         {
-            Inputs.Add(new InputPort(name, this));
+            Inputs.Add(new InputPort(name, dataType, this, setData));
         }
 
         /// <summary>
         /// Adds an output port to the node.
         /// </summary>
-        public void AddOutput(string name)
+        public void AddOutput(string name, DataType dataType, Func<object?> getData)
         {
-            Outputs.Add(new OutputPort(name, this));
+            Outputs.Add(new OutputPort(name, dataType, this, getData));
         }
 
         /// <summary>
@@ -53,11 +55,11 @@ namespace ProcessPipeline.Nodes
         public virtual void Render(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel)
         {
             var drawList = ImGui.GetWindowDrawList();
-            var nodeSize = new Vector2(200, 300) * zoomLevel; // Adjust size based on zoom level
+            var nodeSize = NodeSize * zoomLevel; // Adjust size based on zoom level
             var nodeColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f); // Main content area color
 
             // Calculate the node's position relative to the grid and canvas
-            Vector2 adjustedPos = canvasPos + gridPosition + _nodePos * zoomLevel;
+            Vector2 adjustedPos = canvasPos + gridPosition + NodePos * zoomLevel;
 
             // Define the title bar height
             float titleBarHeight = 30.0f * zoomLevel; // Adjust height based on zoom level
@@ -79,7 +81,7 @@ namespace ProcessPipeline.Nodes
             if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
             {
                 var dragDelta = ImGui.GetIO().MouseDelta;
-                _nodePos += dragDelta / zoomLevel; // Adjust movement based on zoom
+                NodePos += dragDelta / zoomLevel; // Adjust movement based on zoom
             }
 
             // Change title bar colors based on hover and active states
@@ -165,7 +167,7 @@ namespace ProcessPipeline.Nodes
                 // Handle interaction for port (e.g., initiating a connection)
                 // Use ImGui's InvisibleButton to detect clicks
                 ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
-                string portButtonID = $"Port_{ID}_{input.Type}_{input.ID}";
+                string portButtonID = $"Port_{ID}_{input.PType}_{input.ID}";
                 ImGui.InvisibleButton(portButtonID, new Vector2(portRadius * 2, portRadius * 2));
 
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
@@ -193,7 +195,7 @@ namespace ProcessPipeline.Nodes
 
                 // Handle interaction for port (e.g., initiating a connection)
                 ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
-                string portButtonID = $"Port_{ID}_{output.Type}_{output.ID}";
+                string portButtonID = $"Port_{ID}_{output.PType}_{output.ID}";
                 ImGui.InvisibleButton(portButtonID, new Vector2(portRadius * 2, portRadius * 2));
 
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
@@ -239,7 +241,21 @@ namespace ProcessPipeline.Nodes
 
         public virtual void Update(float deltaTime)
         {
-            // Update logic for the node, if any
+            foreach (var t in Outputs.Where(t => t.IsConnected))
+            {
+                if (t.ConnectedPort != null)
+                {
+                    (t.ConnectedPort as InputPort)!.setData(t.getData()!);
+                }
+            }
+            
+            foreach (var t in Inputs.Where(t => t.IsConnected))
+            {
+                if (t.ConnectedPort != null)
+                {
+                    t.setData((t.ConnectedPort as OutputPort)!.getData()!);
+                }
+            }
         }
     }
 }

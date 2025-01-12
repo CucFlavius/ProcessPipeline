@@ -10,11 +10,7 @@ public class InfiniteGrid
         var drawList = ImGui.GetWindowDrawList();
         float gridSize = 50.0f * zoom; // Grid size adjusted by zoom
         uint gridColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.5f, 0.5f, 1.0f)); // Gray grid lines
-        uint backgroundColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.6f, 0.6f, 0.6f, 1.0f)); // Light gray background
-
-        // Draw the background
-        drawList.AddRectFilled(canvasPos, canvasPos + contentSize, backgroundColor);
-
+        
         // Calculate panning offsets
         float offsetX = position.X % gridSize;
         float offsetY = position.Y % gridSize;

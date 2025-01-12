@@ -5,24 +5,22 @@ namespace ProcessPipeline.Nodes
 {
     public class LabelNode : Node
     {
-        private string _label;
+        private string? Text { get; set; }
 
-        public LabelNode(string label, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
+        public LabelNode(string? text, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
         {
             _title = "Label Node";
-            _label = label;
+            Text = text;
 
             // Add one input and one output port
-            AddInput("Input1");
-            AddOutput("Output1");
-            AddInput("Input2");
-            AddOutput("Output2");
+            AddInput("Input", DataType.String, (data) => { Text = data as string; });
+            AddOutput("Output", DataType.String, () => Text);
         }
 
         protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
         {
             // Calculate position for the label text
-            string nodeContent = _label;
+            string? nodeContent = Text;
             Vector2 contentTextSize = ImGui.CalcTextSize(nodeContent);
             Vector2 contentTextPos = contentMin + (new Vector2(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y) - contentTextSize) / 2.0f;
             

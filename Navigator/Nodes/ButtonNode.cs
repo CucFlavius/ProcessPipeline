@@ -13,8 +13,8 @@ namespace ProcessPipeline.Nodes
             _buttonLabel = label;
 
             // Add one input and one output port
-            AddInput("Input1");
-            AddOutput("Output1");
+            //AddInput("Input1");
+            //AddOutput("Output1");
         }
 
         protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
