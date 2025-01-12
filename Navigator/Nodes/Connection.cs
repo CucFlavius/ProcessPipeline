@@ -12,12 +12,6 @@ namespace ProcessPipeline.Nodes
         {
             From = from;
             To = to;
-            
-            // Connect the ports
-            from.IsConnected = true;
-            from.ConnectedPort = to;
-            
-            Console.WriteLine($"Created connection from {from.ID} to {to.ID}");
         }
 
         /// <summary>

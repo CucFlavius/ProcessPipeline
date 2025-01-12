@@ -31,11 +31,17 @@ public class Pipeline
 
         _connections = new List<Connection>();
 
-        // Initialize nodes with custom content
+        // Initialize nodes with custom content for debug purposes
         //Nodes.Add(Node.GenerateNodeID(), new LabelNode("Hello World", new Vector2(-325, -125), OnPortClicked));
         //Nodes.Add(Node.GenerateNodeID(), new ButtonNode("Click Me", new Vector2(100, 100), OnPortClicked));
-        //var node = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
-        //Nodes.Add(node.ID, node);
+        var nodeA = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
+        nodeA.Text = "aaaaaaaaaa";
+        Nodes.Add(nodeA.ID, nodeA);
+        var nodeB = new TextInputNode(new Vector2(-325, 125), OnPortClicked);
+        nodeB.Text = "bbbbbbbbbb";
+        Nodes.Add(nodeB.ID, nodeB);
+        var nodeC = new LabelNode("Hello World", new Vector2(100, -100), OnPortClicked);
+        Nodes.Add(nodeC.ID, nodeC);
     }
     
     /// <summary>
@@ -58,33 +64,43 @@ public class Pipeline
             {
                 if (_draggingPort.PType == PortType.Output && port.PType == PortType.Input)
                 {
-                    // Prevent multiple connections to the same input port
-                    var existingConnection = _connections.Find(c => c.To == port);
+                    // Check if the input port is already connected
+                    var existingConnection = _connections.FirstOrDefault(c => c.To == port);
                     if (existingConnection != null)
                     {
-                        existingConnection.To.IsConnected = false;
-                        existingConnection.To.ConnectedPort = null;
-                        existingConnection.From.IsConnected = false;
-                        existingConnection.From.ConnectedPort = null;
+                        // Remove the existing connection
                         _connections.Remove(existingConnection);
+                        existingConnection.From.RemoveConnection(existingConnection.To);
+                        existingConnection.To.RemoveConnection(existingConnection.From);
                     }
 
-                    _connections.Add(new Connection((OutputPort)_draggingPort, (InputPort)port));
+                    // Establish the new connection
+                    var newConnection = new Connection((OutputPort)_draggingPort, (InputPort)port);
+                    _connections.Add(newConnection);
+
+                    // Update the port connections
+                    _draggingPort.AddConnection(port);
+                    port.AddConnection(_draggingPort);
                 }
                 else if (_draggingPort.PType == PortType.Input && port.PType == PortType.Output)
                 {
-                    _connections.Add(new Connection((OutputPort)port, (InputPort)_draggingPort));
-                    
-                    // Prevent multiple connections to the same input port
-                    var existingConnection = _connections.Find(c => c.To == _draggingPort);
+                    // Check if the input port is already connected
+                    var existingConnection = _connections.FirstOrDefault(c => c.To == _draggingPort);
                     if (existingConnection != null)
                     {
-                        existingConnection.To.IsConnected = false;
-                        existingConnection.To.ConnectedPort = null;
-                        existingConnection.From.IsConnected = false;
-                        existingConnection.From.ConnectedPort = null;
+                        // Remove the existing connection
                         _connections.Remove(existingConnection);
+                        existingConnection.From.RemoveConnection(existingConnection.To);
+                        existingConnection.To.RemoveConnection(existingConnection.From);
                     }
+
+                    // Establish the new connection
+                    var newConnection = new Connection((OutputPort)port, (InputPort)_draggingPort);
+                    _connections.Add(newConnection);
+
+                    // Update the port connections
+                    port.AddConnection(_draggingPort);
+                    _draggingPort.AddConnection(port);
                 }
             }
 
@@ -269,6 +285,21 @@ public class Pipeline
                 _isDragging = false;
                 _draggingPort = null;
             }
+        }
+        
+        // DEBUG //
+        Process();
+    }
+
+    public void Process()
+    {
+        // Determine root nodes
+        var rootNodes = Nodes.Values.Where(n => n.Inputs.Count == 0).ToList();
+        
+        // Process root nodes
+        foreach (var rootNode in rootNodes)
+        {
+            rootNode.Process();
         }
     }
 }

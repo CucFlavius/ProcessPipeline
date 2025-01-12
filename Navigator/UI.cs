@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System.Numerics;
+using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
 using Silk.NET.OpenGL.Extensions.ImGui;
@@ -37,8 +38,39 @@ public class UI
         _controller?.Update(deltaTime);
     }
     
+    const float toolbarSize = 30;
+    const float menuBarHeight = 0;
+    
+    void ToolbarUI()
+    {
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X, viewport.Pos.Y + menuBarHeight));
+        ImGui.SetNextWindowSize(new Vector2(viewport.Size.X, toolbarSize));
+        ImGui.SetNextWindowViewport(viewport.ID);
+
+        ImGuiWindowFlags window_flags = 0
+                                        | ImGuiWindowFlags.NoDocking 
+                                        | ImGuiWindowFlags.NoTitleBar 
+                                        | ImGuiWindowFlags.NoResize 
+                                        | ImGuiWindowFlags.NoMove 
+                                        | ImGuiWindowFlags.NoScrollbar 
+                                        | ImGuiWindowFlags.NoSavedSettings;
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(1, 1));
+        ImGui.Begin("TOOLBAR", window_flags);
+        ImGui.PopStyleVar();
+  
+        if (ImGui.Button("Run", new Vector2(100, toolbarSize)))
+        {
+            _pipeline.Process();
+        }
+  
+        ImGui.End();
+    }
+    
     public void Render()
     {
+        ToolbarUI();
         _pipeline.Render();
         _controller?.Render();
     }

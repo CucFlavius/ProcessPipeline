@@ -241,19 +241,42 @@ namespace ProcessPipeline.Nodes
 
         public virtual void Update(float deltaTime)
         {
-            foreach (var t in Outputs.Where(t => t.IsConnected))
+
+        }
+
+        public virtual void GetInput()
+        {
+            foreach (var t in Inputs)
             {
-                if (t.ConnectedPort != null)
+                foreach (var p in t.ConnectedPorts)
                 {
-                    (t.ConnectedPort as InputPort)!.setData(t.getData()!);
+                    t.setData((p as OutputPort)!.getData()!);
                 }
             }
-            
-            foreach (var t in Inputs.Where(t => t.IsConnected))
+        }
+        
+        public virtual void SetOutput()
+        {
+            // Set the output data
+            foreach (var t in Outputs)
             {
-                if (t.ConnectedPort != null)
+                foreach (var p in t.ConnectedPorts)
                 {
-                    t.setData((t.ConnectedPort as OutputPort)!.getData()!);
+                    (p as InputPort)!.setData(t.getData()!);
+                }
+            }
+        }
+
+        public virtual void Process()
+        {
+            // Set the output data
+            foreach (var t in Outputs)
+            {
+                foreach (var p in t.ConnectedPorts)
+                {
+                    var inputPort = p as InputPort;
+                    inputPort?.setData(t.getData()!);
+                    inputPort?.ParentNode.Process();
                 }
             }
         }

@@ -22,7 +22,10 @@ namespace ProcessPipeline.Nodes
         public Node ParentNode { get; set; }
         
         public bool IsConnected { get; set; }
-        public NodePort? ConnectedPort { get; set; }
+        // For OutputPorts: multiple connections allowed
+        // For InputPorts: only one connection allowed
+        public List<NodePort> ConnectedPorts { get; set; } // Only for OutputPorts
+        public NodePort? ConnectedPort { get; set; } // Only for InputPorts
         
         public uint ID { get; set; } // Unique identifier
         
@@ -33,6 +36,11 @@ namespace ProcessPipeline.Nodes
             DType = dType;
             ParentNode = parent;
             ID = GeneratePortID();
+
+            if (PType == PortType.Output)
+                ConnectedPorts = [];
+            else
+                ConnectedPort = null;
         }
 
         private static uint _portIdCounter = 1;
@@ -40,6 +48,40 @@ namespace ProcessPipeline.Nodes
         private static uint GeneratePortID()
         {
             return _portIdCounter++;
+        }
+        
+        /// <summary>
+        /// Adds a connection to this port.
+        /// </summary>
+        public void AddConnection(NodePort port)
+        {
+            if (PType == PortType.Output)
+            {
+                if (!ConnectedPorts.Contains(port))
+                    ConnectedPorts.Add(port);
+            }
+            else if (PType == PortType.Input)
+            {
+                if (ConnectedPort == null)
+                    ConnectedPort = port;
+            }
+        }
+
+        /// <summary>
+        /// Removes a connection from this port.
+        /// </summary>
+        public void RemoveConnection(NodePort port)
+        {
+            if (PType == PortType.Output)
+            {
+                if (ConnectedPorts.Contains(port))
+                    ConnectedPorts.Remove(port);
+            }
+            else if (PType == PortType.Input)
+            {
+                if (ConnectedPort == port)
+                    ConnectedPort = null;
+            }
         }
 
         /// <summary>

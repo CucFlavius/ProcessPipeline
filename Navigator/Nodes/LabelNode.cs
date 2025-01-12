@@ -27,5 +27,11 @@ namespace ProcessPipeline.Nodes
             // Fallback to default font if the specified font is not found
             drawList.AddText(contentTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), nodeContent);
         }
+        
+        public override void Process()
+        {
+            //Text = "hehe";
+            base.Process();
+        }
     }
 }

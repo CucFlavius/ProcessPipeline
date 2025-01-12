@@ -6,7 +6,7 @@ namespace ProcessPipeline.Nodes;
 
 public class TextInputNode : Node
 {
-    private string? Text { get; set; }
+    public string? Text { get; set; }
     
     public TextInputNode(Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
     {
@@ -34,5 +34,10 @@ public class TextInputNode : Node
                 Text = text;
             }
         }
+    }
+    
+    public override void Process()
+    {
+        base.Process();
     }
 }
