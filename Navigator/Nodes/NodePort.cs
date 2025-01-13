@@ -12,6 +12,7 @@ namespace ProcessPipeline.Nodes
     public enum DataType
     {
         String,
+        Image,
     }
     
     public class NodePort

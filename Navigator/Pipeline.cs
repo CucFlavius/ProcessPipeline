@@ -1,6 +1,7 @@
 ﻿using ImGuiNET;
 using Silk.NET.OpenGL;
 using System.Numerics;
+using Tensorflow.Gradients;
 
 namespace ProcessPipeline;
 using Nodes;
@@ -25,6 +26,7 @@ public class Pipeline
     private Node _draggingNodePort;
     private bool _isDragging;
     private Vector2 _draggingPos;
+    private readonly GL _gl;
 
     public Pipeline(GL gl)
     {
@@ -33,6 +35,7 @@ public class Pipeline
         _gridPosition = Vector2.Zero;
         _zoomLevel = 1.0f;
         _initialSetup = true;
+        _gl = gl;
 
         Connections = new List<Connection>();
 
@@ -47,6 +50,12 @@ public class Pipeline
         // Nodes.Add(nodeB.ID, nodeB);
         // var nodeC = new LabelNode("Hello World", new Vector2(100, -100), OnPortClicked);
         // Nodes.Add(nodeC.ID, nodeC);
+        // var pathNode = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
+        // pathNode.Text = "Lichtenstein_img_processing_test.png";
+        // Nodes.Add(pathNode.ID, pathNode);
+        // var imageNode = new LoadImageNode(new Vector2(100, -125), OnPortClicked);
+        // imageNode.gl = gl;
+        // Nodes.Add(imageNode.ID, imageNode);
     }
     
     /// <summary>
@@ -291,9 +300,6 @@ public class Pipeline
                 _draggingPort = null;
             }
         }
-        
-        // DEBUG //
-        Process();
     }
 
     public void Process()
@@ -391,10 +397,15 @@ public class Pipeline
                     {
                         "ProcessPipeline.Nodes.TextInputNode" => new TextInputNode(),
                         "ProcessPipeline.Nodes.LabelNode" => new LabelNode(),
+                        "ProcessPipeline.Nodes.LoadImageNode" => new LoadImageNode(),
                         _ => (Node)Activator.CreateInstance(elementType)!
                     };
                     
                     bufferNode.PortClickedHandler = OnPortClicked;
+                    
+                    if (bufferNode is IOpenGlNode openGlNode)
+                        openGlNode.Gl = _gl;
+                    
                     break;
                 }
                 case "Node.ID" when bufferNode != null:

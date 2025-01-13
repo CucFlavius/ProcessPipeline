@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using System.Numerics;
+using Silk.NET.OpenGL;
 
 namespace ProcessPipeline.Nodes
 {
@@ -11,7 +12,7 @@ namespace ProcessPipeline.Nodes
         public uint ID { get; set; }
         public Vector2 Position { get; set; } // Position of the node
         public Vector2 Size { get; set; } // Size of the node
-        public string Title { get; set; } // Title of the node
+        public abstract string Title { get; set; } // Title of the node
         private bool _isSelected = false; // Tracks if the node is selected
         public List<InputPort> Inputs { get; set; }
         public List<OutputPort> Outputs { get; set; }
@@ -22,7 +23,6 @@ namespace ProcessPipeline.Nodes
         {
             Position = pos;
             Size = DefaultSize;
-            Title = "Node";
             Inputs = new List<InputPort>();
             Outputs = new List<OutputPort>();
             ID = GenerateNodeID();

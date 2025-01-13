@@ -7,10 +7,10 @@ namespace ProcessPipeline.Nodes
     {
         public string? Text { get; set; }
         public override Vector2 DefaultSize { get; } = new Vector2(200, 100);
+        public override string Title { get; set; } = "Label Node";
 
         public LabelNode(string? text, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
         {
-            Title = "Label Node";
             Text = text;
 
             // Add one input and one output port
@@ -38,7 +38,7 @@ namespace ProcessPipeline.Nodes
         
         public override void Process()
         {
-            //Text = "hehe";
+            //Do some work (in case of LabelNode, there is no work to be done)
             base.Process();
         }
     }

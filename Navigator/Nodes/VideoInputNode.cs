@@ -12,6 +12,7 @@ namespace ProcessPipeline.Nodes;
 
 public class VideoInputNode : Node
 {
+    public override string Title { get; set; } = "Video Input Node";
     private Texture? _bufferTexture;
     
     private readonly GL _gl;

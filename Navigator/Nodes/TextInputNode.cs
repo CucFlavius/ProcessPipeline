@@ -8,10 +8,10 @@ public class TextInputNode : Node
 {
     public string? Text { get; set; }
     public override Vector2 DefaultSize => new Vector2(200, 100);
-    
+    public override string Title { get; set; } = "Text Input Node";
+
     public TextInputNode(Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
     {
-        Title = "Text Input Node";
         Text = string.Empty;
 
         AddOutput("Output", DataType.String, () => Text);
