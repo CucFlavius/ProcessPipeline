@@ -8,9 +8,9 @@ namespace ProcessPipeline;
     public class Texture : IDisposable
     {
         private uint _handle;
-        private readonly GL _gl;
+        private readonly GL? _gl;
 
-        public unsafe Texture(GL gl, string path)
+        public unsafe Texture(GL? gl, string path)
         {
             _gl = gl;
             
@@ -27,7 +27,7 @@ namespace ProcessPipeline;
             image.Dispose();
         }
         
-        public unsafe Texture(GL gl, Image<Rgba32> image)
+        public unsafe Texture(GL? gl, Image<Rgba32> image)
         {
             _gl = gl;
             
@@ -38,7 +38,7 @@ namespace ProcessPipeline;
             }
         }
 
-        public unsafe Texture(GL gl, Span<byte> data, uint width, uint height)
+        public unsafe Texture(GL? gl, Span<byte> data, uint width, uint height)
         {
             _gl = gl;
             //We want the ability to create a texture using data generated from code as well.
@@ -50,6 +50,8 @@ namespace ProcessPipeline;
 
         private unsafe void Load(void* data, uint width, uint height)
         {
+            if (_gl == null) return;
+            
             //Generating the opengl handle;
             _handle = _gl.GenTexture();
             Bind();
@@ -68,6 +70,8 @@ namespace ProcessPipeline;
 
         private void Bind(TextureUnit textureSlot = TextureUnit.Texture0)
         {
+            if (_gl == null) return;
+            
             //When we bind a texture we can choose which textureslot we can bind it to.
             _gl.ActiveTexture(textureSlot);
             _gl.BindTexture(TextureTarget.Texture2D, _handle);
@@ -76,7 +80,7 @@ namespace ProcessPipeline;
         public void Dispose()
         {
             //In order to dispose we need to delete the opengl handle for the texture.
-            _gl.DeleteTexture(_handle);
+            _gl?.DeleteTexture(_handle);
         }
         
         public nint Handle => (nint)_handle;

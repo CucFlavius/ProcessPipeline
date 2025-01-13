@@ -11,7 +11,7 @@ public abstract class Program
     private static Pipeline? _pipeline;
     private static IWindow? _window;
     private static GL? _gl;
-    private static UI? _ui;
+    private static Ui? _ui;
 
     private static IInputContext? _inputContext;
 
@@ -47,7 +47,7 @@ public abstract class Program
         _gl = _window.CreateOpenGL();
         _inputContext = _window.CreateInput();
         _pipeline = new Pipeline(_gl);
-        _ui = new UI(_gl, _window, _inputContext, _pipeline);
+        _ui = new Ui(_gl, _window, _inputContext, _pipeline);
 
         foreach (var iKeyboard in _inputContext.Keyboards)
             iKeyboard.KeyDown += KeyDown;

@@ -12,10 +12,10 @@ namespace ProcessPipeline.Nodes;
 
 public class VideoInputNode : Node
 {
-    public override string Title { get; set; } = "Video Input Node";
+    public override string? Title { get; set; } = "Video Input Node";
     private Texture? _bufferTexture;
     
-    private readonly GL _gl;
+    private readonly GL? _gl;
     private readonly LibVLC? _libVLC;
     private readonly MediaPlayer? _mediaPlayer;
     private readonly BlockingCollection<Image<Rgba32>>? _framesQueue;
@@ -27,7 +27,7 @@ public class VideoInputNode : Node
     private byte[]? _currentFrameBuffer;
     private volatile bool _stopRequested = false;
     
-    public VideoInputNode(GL gl, string path, Vector2 pos, PortClickedHandler pcl) : base(pos, pcl)
+    public VideoInputNode(GL? gl, string path, Vector2 pos, PortClickedHandler pcl) : base(pos, pcl)
     {
         Core.Initialize();
         _gl = gl;

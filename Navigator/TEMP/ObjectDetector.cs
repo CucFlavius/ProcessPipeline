@@ -110,7 +110,7 @@ public static class ObjectDetector
 
 public class DetectionResult
 {
-    public string Label { get; set; }
+    public string Label { get; init; }
     public float Confidence { get; set; }
     // You could store a bounding box as a rectangle or tuple
     public (float X, float Y, float W, float H) BoundingBox { get; set; }

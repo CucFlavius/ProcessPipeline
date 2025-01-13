@@ -4,5 +4,5 @@ namespace ProcessPipeline.Nodes;
 
 public interface IOpenGlNode
 {
-    public GL Gl { get; set; }
+    public GL? Gl { get; set; }
 }

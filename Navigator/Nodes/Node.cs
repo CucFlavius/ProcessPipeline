@@ -1,31 +1,28 @@
 ﻿using ImGuiNET;
 using System.Numerics;
-using Silk.NET.OpenGL;
 
 namespace ProcessPipeline.Nodes
 {
-    public delegate void PortClickedHandler(NodePort port, Node node);
+    public delegate void PortClickedHandler(NodePort? port, Node node);
     
     public abstract class Node
     {
-        public static uint IDCounter = 1; // Static counter for unique node IDs
-        public uint ID { get; set; }
+        private static uint _idCounter = 1; // Static counter for unique node IDs
+        public uint Id { get; set; }
         public Vector2 Position { get; set; } // Position of the node
         public Vector2 Size { get; set; } // Size of the node
-        public abstract string Title { get; set; } // Title of the node
-        private bool _isSelected = false; // Tracks if the node is selected
-        public List<InputPort> Inputs { get; set; }
-        public List<OutputPort> Outputs { get; set; }
+        public abstract string? Title { get; set; } // Title of the node
+        public List<InputPort?> Inputs { get; set; }
+        public List<OutputPort?> Outputs { get; set; }
         public abstract Vector2 DefaultSize { get; }
         public PortClickedHandler? PortClickedHandler;
 
-        public Node(Vector2 pos, PortClickedHandler? portClickedHandler)
+        protected Node(Vector2 pos, PortClickedHandler? portClickedHandler)
         {
             Position = pos;
-            Size = DefaultSize;
-            Inputs = new List<InputPort>();
-            Outputs = new List<OutputPort>();
-            ID = GenerateNodeID();
+            Inputs = [];
+            Outputs = [];
+            Id = GenerateNodeId();
 
             PortClickedHandler = portClickedHandler;
         }
@@ -33,7 +30,7 @@ namespace ProcessPipeline.Nodes
         /// <summary>
         /// Adds an input port to the node.
         /// </summary>
-        public void AddInput(string name, DataType dataType, Action<object> setData)
+        protected void AddInput(string name, DataType dataType, Action<object> setData)
         {
             Inputs.Add(new InputPort(name, dataType, this, setData));
         }
@@ -41,7 +38,7 @@ namespace ProcessPipeline.Nodes
         /// <summary>
         /// Adds an output port to the node.
         /// </summary>
-        public void AddOutput(string name, DataType dataType, Func<object?> getData)
+        protected void AddOutput(string name, DataType dataType, Func<object?> getData)
         {
             Outputs.Add(new OutputPort(name, dataType, this, getData));
         }
@@ -53,11 +50,19 @@ namespace ProcessPipeline.Nodes
         {
             var drawList = ImGui.GetWindowDrawList();
             var nodeSize = Size * zoomLevel; // Adjust size based on zoom level
-            var nodeColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f); // Main content area color
+            var nodeDarkColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f); // Main content area color
+            var nodeBrightColor = new Vector4(0.3f, 0.3f, 0.3f, 1.0f); // Brighter color for selected nodes
 
             // Calculate the node's position relative to the grid and canvas
             Vector2 adjustedPos = canvasPos + gridPosition + Position * zoomLevel;
 
+            // Draw background for the node
+            drawList.AddRectFilled(
+                adjustedPos,
+                adjustedPos + nodeSize,
+                ImGui.ColorConvertFloat4ToU32(nodeDarkColor),
+                5.0f);
+            
             // Define the title bar height
             float titleBarHeight = 30.0f * zoomLevel; // Adjust height based on zoom level
 
@@ -68,7 +73,7 @@ namespace ProcessPipeline.Nodes
             Vector2 contentRectMax = adjustedPos + nodeSize;
 
             // Define unique ID for title bar
-            string titleBarId = $"TitleBar_Node_{ID}";
+            string titleBarId = $"TitleBar_Node_{Id}";
 
             // Create an invisible button over the title bar area to capture interactions
             ImGui.SetCursorScreenPos(titleBarRectMin);
@@ -80,57 +85,29 @@ namespace ProcessPipeline.Nodes
                 var dragDelta = ImGui.GetIO().MouseDelta;
                 Position += dragDelta / zoomLevel; // Adjust movement based on zoom
             }
-
-            // Change title bar colors based on hover and active states
-            Vector4 titleBarColorStart = new Vector4(0.3f, 0.3f, 0.3f, 1.0f); // Start color of gradient
-            Vector4 titleBarColorEnd = new Vector4(0.1f, 0.1f, 0.1f, 1.0f);   // End color of gradient
-
-            if (ImGui.IsItemHovered())
-            {
-                titleBarColorStart = new Vector4(0.4f, 0.4f, 0.4f, 1.0f);
-                titleBarColorEnd = new Vector4(0.2f, 0.2f, 0.2f, 1.0f);
-            }
-
-            if (ImGui.IsItemActive())
-            {
-                titleBarColorStart = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
-                titleBarColorEnd = new Vector4(0.3f, 0.3f, 0.3f, 1.0f);
-            }
-
-            // Draw the title bar with gradient
-            drawList.AddRectFilledMultiColor(titleBarRectMin, titleBarRectMax,
-                ImGui.ColorConvertFloat4ToU32(titleBarColorStart),
-                ImGui.ColorConvertFloat4ToU32(titleBarColorEnd),
-                ImGui.ColorConvertFloat4ToU32(titleBarColorEnd),
-                ImGui.ColorConvertFloat4ToU32(titleBarColorStart));
+            
+            drawList.AddRectFilled(
+                titleBarRectMin,
+                titleBarRectMax,
+                ImGui.ColorConvertFloat4ToU32(nodeBrightColor),
+                5.0f, ImDrawFlags.RoundCornersTop); // Radius: 10.0f for rounded corners
 
             // Draw node title text in the title bar with scalable font
-            var titleText = $"{Title}_{ID}";
+            var titleText = $"{Title}_{Id}";
             Vector2 titleTextSize = ImGui.CalcTextSize(titleText);
             Vector2 titleTextPos = titleBarRectMin + (new Vector2(nodeSize.X, titleBarHeight) - titleTextSize) / 2.0f;
             // Fallback to default font if the specified font is not found
             drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), titleText);
-
-            // Handle selection via content area
-            //string contentId = $"Content_Node_{ID}";
-            //ImGui.SetCursorScreenPos(contentRectMin);
-            //ImGui.InvisibleButton(contentId, new Vector2(nodeSize.X, nodeSize.Y - titleBarHeight));
-
-            // Handle selection toggle
-            /*
-            if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-            {
-                _isSelected = !_isSelected; // Toggle selection state
-            }
-            */
-            // Change content area color if selected
-            Vector4 contentColorModified = _isSelected ? new Vector4(0.3f, 0.3f, 0.3f, 1.0f) : nodeColor;
-
+            
             // Redraw the content area with modified color
-            drawList.AddRectFilled(contentRectMin, contentRectMax, ImGui.ColorConvertFloat4ToU32(contentColorModified));
+            drawList.AddRectFilled(
+                contentRectMin,
+                contentRectMax,
+                ImGui.ColorConvertFloat4ToU32(nodeDarkColor),
+                5.0f, ImDrawFlags.RoundCornersBottom); // Radius: 10.0f for rounded corners
 
             // Implement context menu
-            if (ImGui.BeginPopupContextItem($"Popup_Node_{ID}"))
+            if (ImGui.BeginPopupContextItem($"Popup_Node_{Id}"))
             {
                 if (ImGui.MenuItem("Delete Node"))
                 {
@@ -146,55 +123,41 @@ namespace ProcessPipeline.Nodes
             // Open the context menu on right-click
             if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
             {
-                ImGui.OpenPopup($"Popup_Node_{ID}");
+                ImGui.OpenPopup($"Popup_Node_{Id}");
             }
 
             // Render input ports
-            int inputIndex = 0;
-            foreach (var input in Inputs)
-            {
-                // Calculate position for the input port
-                Vector2 portPos = input.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, inputIndex);
-                // Render the input port as a small circle
-                float portRadius = 5.0f * zoomLevel;
-                uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
-                //drawList.AddCircle(portPos, portRadius, portColor);
-                drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                drawList.AddText(portPos + new Vector2(10 * zoomLevel, -8 * zoomLevel), portColor, input.GetPortName());
-
-                // Handle interaction for port (e.g., initiating a connection)
-                // Use ImGui's InvisibleButton to detect clicks
-                ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
-                string portButtonID = $"Port_{ID}_{input.PType}_{input.ID}";
-                ImGui.InvisibleButton(portButtonID, new Vector2(portRadius * 2, portRadius * 2));
-
-                if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
-                {
-                    // Invoke the port clicked handler
-                    PortClickedHandler?.Invoke(input, this);
-                }
-
-                inputIndex++;
-            }
+            RenderInputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
 
             // Render output ports
-            int outputIndex = 0;
+            RenderOutputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
+
+            // Call the RenderContent method for custom content
+            RenderContent(drawList, contentRectMin, contentRectMax, zoomLevel);
+        }
+
+        private void RenderOutputPorts(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel, Vector2 nodeSize,
+            ImDrawListPtr drawList)
+        {
+            var outputIndex = 0;
             foreach (var output in Outputs)
             {
+                if (output == null) continue;
+                
                 // Calculate position for the output port
-                Vector2 portPos = output.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, outputIndex);
+                var portPos = output.GetScreenPosition(canvasPos, gridPosition, zoomLevel, nodeSize, outputIndex);
                 // Render the output port as a small circle
-                float portRadius = 5.0f * zoomLevel;
-                uint portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
+                var portRadius = 5.0f * zoomLevel;
+                var portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
                 //drawList.AddCircle(portPos, portRadius, portColor);
                 drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
-                Vector2 contentTextSize = ImGui.CalcTextSize(output.GetPortName());
+                var contentTextSize = ImGui.CalcTextSize(output.GetPortName());
                 drawList.AddText(portPos + new Vector2(-(10 * zoomLevel) - contentTextSize.X, -8 * zoomLevel), portColor, output.GetPortName());
 
                 // Handle interaction for port (e.g., initiating a connection)
                 ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
-                string portButtonID = $"Port_{ID}_{output.PType}_{output.ID}";
-                ImGui.InvisibleButton(portButtonID, new Vector2(portRadius * 2, portRadius * 2));
+                var portButtonId = $"Port_{Id}_{output.PType}_{output.Id}";
+                ImGui.InvisibleButton(portButtonId, new Vector2(portRadius * 2, portRadius * 2));
 
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 {
@@ -204,14 +167,39 @@ namespace ProcessPipeline.Nodes
 
                 outputIndex++;
             }
+        }
 
-            // Call the RenderContent method for custom content
-            RenderContent(drawList, contentRectMin, contentRectMax, zoomLevel);
-
-            // Optional: Highlight node border if selected
-            if (_isSelected)
+        private void RenderInputPorts(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel, Vector2 nodeSize,
+            ImDrawListPtr drawList)
+        {
+            var inputIndex = 0;
+            foreach (var input in Inputs)
             {
-                drawList.AddRect(adjustedPos, adjustedPos + nodeSize, ImGui.ColorConvertFloat4ToU32(new Vector4(0.0f, 1.0f, 0.0f, 1.0f)), 0.0f, 0, 2.0f); // Green border
+                if (input == null) continue;
+                
+                // Calculate position for the input port
+                var portPos = input.GetScreenPosition(
+                    canvasPos, gridPosition, zoomLevel, nodeSize, inputIndex);
+                // Render the input port as a small circle
+                var portRadius = 5.0f * zoomLevel;
+                var portColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)); // Green for inputs
+                //drawList.AddCircle(portPos, portRadius, portColor);
+                drawList.AddCircleFilled(portPos, portRadius - 2, portColor);
+                drawList.AddText(portPos + new Vector2(10 * zoomLevel, -8 * zoomLevel), portColor, input.GetPortName());
+
+                // Handle interaction for port (e.g., initiating a connection)
+                // Use ImGui's InvisibleButton to detect clicks
+                ImGui.SetCursorScreenPos(portPos - new Vector2(portRadius, portRadius));
+                var portButtonId = $"Port_{Id}_{input.PType}_{input.Id}";
+                ImGui.InvisibleButton(portButtonId, new Vector2(portRadius * 2, portRadius * 2));
+
+                if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                {
+                    // Invoke the port clicked handler
+                    PortClickedHandler?.Invoke(input, this);
+                }
+
+                inputIndex++;
             }
         }
 
@@ -221,9 +209,9 @@ namespace ProcessPipeline.Nodes
         protected virtual void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
         {
             // Default implementation: Display placeholder text
-            string nodeContent = "Node Content"; // Replace with actual content
-            Vector2 contentTextSize = ImGui.CalcTextSize(nodeContent);
-            Vector2 contentTextPos = contentMin + (new Vector2(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y) - contentTextSize) / 2.0f;
+            const string nodeContent = "Node Content"; // Replace with actual content
+            var contentTextSize = ImGui.CalcTextSize(nodeContent);
+            var contentTextPos = contentMin + (new Vector2(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y) - contentTextSize) / 2.0f;
             
             // Fallback to default font if the specified font is not found
             drawList.AddText(contentTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), nodeContent);
@@ -232,9 +220,9 @@ namespace ProcessPipeline.Nodes
         /// <summary>
         /// Generates a unique node ID.
         /// </summary>
-        public static uint GenerateNodeID()
+        private static uint GenerateNodeId()
         {
-            return IDCounter++;
+            return _idCounter++;
         }
 
         public virtual void Update(float deltaTime)
@@ -246,9 +234,11 @@ namespace ProcessPipeline.Nodes
         {
             foreach (var t in Inputs)
             {
+                if (t?.ConnectedPorts == null) continue;
+                
                 foreach (var p in t.ConnectedPorts)
                 {
-                    (t as InputPort)?.setData((p as OutputPort)!.getData()!);
+                    t?.SetData((p as OutputPort)!.GetData()!);
                 }
             }
         }
@@ -258,9 +248,11 @@ namespace ProcessPipeline.Nodes
             // Set the output data
             foreach (var t in Outputs)
             {
+                if (t?.ConnectedPorts == null) continue;
+                
                 foreach (var p in t.ConnectedPorts)
                 {
-                    (p as InputPort)!.setData((t as OutputPort)?.getData()!);
+                    (p as InputPort)!.SetData(t?.GetData()!);
                 }
             }
         }
@@ -270,10 +262,12 @@ namespace ProcessPipeline.Nodes
             // Set the output data
             foreach (var t in Outputs)
             {
+                if (t?.ConnectedPorts == null) continue;
+                
                 foreach (var p in t.ConnectedPorts)
                 {
                     var inputPort = p as InputPort;
-                    inputPort?.setData((t as OutputPort)?.getData()!);
+                    inputPort?.SetData(t?.GetData()!);
                     inputPort?.ParentNode.Process();
                 }
             }
@@ -284,7 +278,7 @@ namespace ProcessPipeline.Nodes
             return null;
         }
 
-        public virtual void SetData(string data)
+        public virtual void SetData(string? data)
         {
             
         }

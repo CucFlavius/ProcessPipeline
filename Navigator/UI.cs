@@ -9,14 +9,13 @@ using Silk.NET.Windowing;
 
 namespace ProcessPipeline;
 
-public class UI
+public class Ui
 {
     private readonly GL _gl;
     private readonly ImGuiController? _controller;
-    private Texture? _testTexture;
-    private Pipeline _pipeline;
+    private readonly Pipeline _pipeline;
 
-    public UI(GL gl, IWindow window, IInputContext inputContext, Pipeline pipeline)
+    public Ui(GL gl, IWindow window, IInputContext inputContext, Pipeline pipeline)
     {
         _gl = gl;
         var baseFont = new ImGuiFontConfig(@".\Font\Roboto-Medium.ttf", 14);

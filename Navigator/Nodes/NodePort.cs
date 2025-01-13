@@ -17,13 +17,13 @@ namespace ProcessPipeline.Nodes
     
     public class NodePort
     {
-        public uint ID { get; set; } // Unique identifier
+        public uint Id { get; set; } // Unique identifier
         public string Name { get; set; }
         public PortType PType { get; set; }
         public DataType DType { get; set; }
         public Node ParentNode { get; set; }
-        public List<NodePort>? ConnectedPorts { get; set; } // Only for OutputPorts
-        public NodePort? ConnectedPort { get; set; } // Only for InputPorts
+        public List<NodePort?>? ConnectedPorts { get; set; } // Only for OutputPorts
+        private NodePort? ConnectedPort { get; set; } // Only for InputPorts
 
         protected NodePort(string name, PortType pType, DataType dType, Node parent)
         {
@@ -31,7 +31,7 @@ namespace ProcessPipeline.Nodes
             PType = pType;
             DType = dType;
             ParentNode = parent;
-            ID = GeneratePortID();
+            Id = GeneratePortId();
 
             if (PType == PortType.Output)
                 ConnectedPorts = [];
@@ -41,42 +41,56 @@ namespace ProcessPipeline.Nodes
 
         private static uint _portIdCounter = 1;
 
-        private static uint GeneratePortID()
+        private static uint GeneratePortId()
         {
             return _portIdCounter++;
         }
-        
+
         /// <summary>
         /// Adds a connection to this port.
         /// </summary>
-        public void AddConnection(NodePort port)
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public void AddConnection(NodePort? port)
         {
-            if (PType == PortType.Output)
+            switch (PType)
             {
-                if (!ConnectedPorts.Contains(port))
-                    ConnectedPorts.Add(port);
-            }
-            else if (PType == PortType.Input)
-            {
-                if (ConnectedPort == null)
-                    ConnectedPort = port;
+                case PortType.Output:
+                {
+                    if (ConnectedPorts != null && !ConnectedPorts.Contains(port))
+                        ConnectedPorts.Add(port);
+                    break;
+                }
+                case PortType.Input:
+                {
+                    ConnectedPort ??= port;
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
         /// <summary>
         /// Removes a connection from this port.
         /// </summary>
-        public void RemoveConnection(NodePort port)
+        public void RemoveConnection(NodePort? port)
         {
-            if (PType == PortType.Output)
+            switch (PType)
             {
-                if (ConnectedPorts.Contains(port))
-                    ConnectedPorts.Remove(port);
-            }
-            else if (PType == PortType.Input)
-            {
-                if (ConnectedPort == port)
-                    ConnectedPort = null;
+                case PortType.Output:
+                {
+                    if (ConnectedPorts != null && ConnectedPorts.Contains(port))
+                        ConnectedPorts.Remove(port);
+                    break;
+                }
+                case PortType.Input:
+                {
+                    if (ConnectedPort == port)
+                        ConnectedPort = null;
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -91,8 +105,8 @@ namespace ProcessPipeline.Nodes
 
             //float spacing = nodeSize.Y / (total + 1);
             //float yPos = ParentNode._nodePos.Y * zoomLevel + spacing * (index + 1) + canvasPos.Y + gridPosition.Y;
-            float nodeSpacing = 20 * zoomLevel;
-            float yPos = ParentNode.Position.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
+            var nodeSpacing = 20 * zoomLevel;
+            var yPos = ParentNode.Position.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
             
             float xPos;
             if (PType == PortType.Input)
@@ -105,10 +119,10 @@ namespace ProcessPipeline.Nodes
         
         public ReadOnlySpan<char> GetPortName()
         {
-            return $"{Name} {ID}".AsSpan();
+            return $"{Name} {Id}".AsSpan();
         }
 
-        public static void UpdatePortIDCounter(uint maxPortId)
+        public static void UpdatePortIdCounter(uint maxPortId)
         {
             _portIdCounter = Math.Max(_portIdCounter, maxPortId);
         }
@@ -116,21 +130,21 @@ namespace ProcessPipeline.Nodes
     
     public class InputPort : NodePort
     {
-        public Action<object> setData { get; set; }
+        public Action<object> SetData { get; set; }
         
         public InputPort(string name, DataType dType, Node parent, Action<object> setData) : base(name, PortType.Input, dType, parent)
         {
-            this.setData = setData;
+            this.SetData = setData;
         }
     }
     
     public class OutputPort : NodePort
     {
-        public Func<object?> getData { get; set; }
+        public Func<object?> GetData { get; set; }
         
         public OutputPort(string name, DataType dType, Node parent, Func<object?> data) : base(name, PortType.Output, dType, parent)
         {
-            getData = data;
+            GetData = data;
         }
     }
 }

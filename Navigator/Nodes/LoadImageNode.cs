@@ -8,24 +8,26 @@ namespace ProcessPipeline.Nodes;
 
 public class LoadImageNode : Node, IOpenGlNode
 {
-    public override Vector2 DefaultSize { get; } = new Vector2(200, 200);
-    public override string Title { get; set; } = "Load Image Node";
-    
-    public string? ImagePath;
-    public Image<Rgba32>? ImageData;
+    public sealed override Vector2 DefaultSize { get; } = new Vector2(200, 200);
+    public override string? Title { get; set; } = "Load Image Node";
+
+    private string? _imagePath;
+    private Image<Rgba32>? _imageData;
     private Texture? _bufferTexture;
     
     public LoadImageNode(Vector2 pos, PortClickedHandler? portClickedHandler) : base(pos, portClickedHandler)
     {
+        Size = DefaultSize;
+        
         // Add one input and one output port
-        AddInput("Input", DataType.String, (data) => { ImagePath = data as string; });
-        AddOutput("Output", DataType.Image, () => ImageData);
+        AddInput("Input", DataType.String, (data) => { _imagePath = data as string; });
+        AddOutput("Output", DataType.Image, () => _imageData);
     }
     
     public LoadImageNode() : base(Vector2.Zero, null)
     {
-        AddInput("Input", DataType.String, (data) => { ImagePath = data as string; });
-        AddOutput("Output", DataType.Image, () => ImageData);
+        AddInput("Input", DataType.String, (data) => { _imagePath = data as string; });
+        AddOutput("Output", DataType.Image, () => _imageData);
     }
 
     protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax,
@@ -44,17 +46,17 @@ public class LoadImageNode : Node, IOpenGlNode
     
     public override void Process()
     {
-        ImageData?.Dispose();
+        _imageData?.Dispose();
         _bufferTexture?.Dispose();
 
-        if (ImagePath != null)
+        if (_imagePath != null)
         {
-            ImageData = Image.Load<Rgba32>(ImagePath);
-            _bufferTexture = new Texture(Gl, ImageData);
+            _imageData = Image.Load<Rgba32>(_imagePath);
+            _bufferTexture = new Texture(Gl, _imageData);
         }
         
         base.Process();
     }
 
-    public GL Gl { get; set; }
+    public GL? Gl { get; set; }
 }
