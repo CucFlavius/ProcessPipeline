@@ -72,20 +72,13 @@ public class UI
         ImGui.SameLine();
         if (ImGui.Button("Save Pipeline", new Vector2(0, toolbarSize)))
         {
-            string json = _pipeline.SerializePipeline();
-            File.WriteAllText("pipeline.json", json);
+            _pipeline.Serialize("pipeline.txt");
         }
 
         ImGui.SameLine();
         if (ImGui.Button("Load Pipeline", new Vector2(0, toolbarSize)))
         {
-            if (File.Exists("pipeline.json"))
-            {
-                string loadedJson = File.ReadAllText("pipeline.json");
-                Pipeline newPipeline = new Pipeline(_gl);
-                newPipeline.DeserializePipeline(loadedJson);
-                _pipeline = newPipeline;
-            }
+            _pipeline.Deserialize("pipeline.txt");
         }
         
         ImGui.End();

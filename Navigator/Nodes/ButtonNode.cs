@@ -17,6 +17,8 @@ namespace ProcessPipeline.Nodes
             //AddOutput("Output1");
         }
 
+        public override Vector2 DefaultSize { get; } = new Vector2(200, 100);
+
         protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
         {
             // Calculate position for the button

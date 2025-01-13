@@ -1,44 +1,33 @@
 ﻿using ImGuiNET;
 using System.Numerics;
-using System.Text.Json.Serialization;
-using ProcessPipeline.Serialization;
 
 namespace ProcessPipeline.Nodes
 {
     public delegate void PortClickedHandler(NodePort port, Node node);
     
-    [JsonConverter(typeof(NodeConverter))]
     public abstract class Node
     {
-        [JsonIgnore] public static uint IDCounter = 1; // Static counter for unique node IDs
-        [JsonPropertyName("id")]
-        public uint ID { get; private set; }
-        [JsonPropertyName("position")]
-        public Vector2 NodePos { get; set; } // Position of the node
-        [JsonPropertyName("size")]
-        public Vector2 NodeSize { get; set; } // Size of the node
-        [JsonPropertyName("title")]
+        public static uint IDCounter = 1; // Static counter for unique node IDs
+        public uint ID { get; set; }
+        public Vector2 Position { get; set; } // Position of the node
+        public Vector2 Size { get; set; } // Size of the node
         public string Title { get; set; } // Title of the node
-        [JsonIgnore] private bool _isSelected = false; // Tracks if the node is selected
-
-        [JsonPropertyName("inputs")]
+        private bool _isSelected = false; // Tracks if the node is selected
         public List<InputPort> Inputs { get; set; }
-        [JsonPropertyName("outputs")]
         public List<OutputPort> Outputs { get; set; }
+        public abstract Vector2 DefaultSize { get; }
+        public PortClickedHandler? PortClickedHandler;
 
-        // Callback for port clicks
-        [JsonIgnore] private PortClickedHandler _portClickedHandler;
-
-        public Node(Vector2 pos, PortClickedHandler portClickedHandler)
+        public Node(Vector2 pos, PortClickedHandler? portClickedHandler)
         {
-            NodePos = pos;
-            NodeSize = new Vector2(200, 300);
+            Position = pos;
+            Size = DefaultSize;
             Title = "Node";
             Inputs = new List<InputPort>();
             Outputs = new List<OutputPort>();
             ID = GenerateNodeID();
 
-            _portClickedHandler = portClickedHandler;
+            PortClickedHandler = portClickedHandler;
         }
 
         /// <summary>
@@ -63,11 +52,11 @@ namespace ProcessPipeline.Nodes
         public virtual void Render(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel)
         {
             var drawList = ImGui.GetWindowDrawList();
-            var nodeSize = NodeSize * zoomLevel; // Adjust size based on zoom level
+            var nodeSize = Size * zoomLevel; // Adjust size based on zoom level
             var nodeColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f); // Main content area color
 
             // Calculate the node's position relative to the grid and canvas
-            Vector2 adjustedPos = canvasPos + gridPosition + NodePos * zoomLevel;
+            Vector2 adjustedPos = canvasPos + gridPosition + Position * zoomLevel;
 
             // Define the title bar height
             float titleBarHeight = 30.0f * zoomLevel; // Adjust height based on zoom level
@@ -89,7 +78,7 @@ namespace ProcessPipeline.Nodes
             if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
             {
                 var dragDelta = ImGui.GetIO().MouseDelta;
-                NodePos += dragDelta / zoomLevel; // Adjust movement based on zoom
+                Position += dragDelta / zoomLevel; // Adjust movement based on zoom
             }
 
             // Change title bar colors based on hover and active states
@@ -116,10 +105,11 @@ namespace ProcessPipeline.Nodes
                 ImGui.ColorConvertFloat4ToU32(titleBarColorStart));
 
             // Draw node title text in the title bar with scalable font
-            Vector2 titleTextSize = ImGui.CalcTextSize(Title);
+            var titleText = $"{Title}_{ID}";
+            Vector2 titleTextSize = ImGui.CalcTextSize(titleText);
             Vector2 titleTextPos = titleBarRectMin + (new Vector2(nodeSize.X, titleBarHeight) - titleTextSize) / 2.0f;
             // Fallback to default font if the specified font is not found
-            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), Title);
+            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), titleText);
 
             // Handle selection via content area
             //string contentId = $"Content_Node_{ID}";
@@ -181,7 +171,7 @@ namespace ProcessPipeline.Nodes
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 {
                     // Invoke the port clicked handler
-                    _portClickedHandler?.Invoke(input, this);
+                    PortClickedHandler?.Invoke(input, this);
                 }
 
                 inputIndex++;
@@ -209,7 +199,7 @@ namespace ProcessPipeline.Nodes
                 if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                 {
                     // Invoke the port clicked handler
-                    _portClickedHandler?.Invoke(output, this);
+                    PortClickedHandler?.Invoke(output, this);
                 }
 
                 outputIndex++;
@@ -258,7 +248,7 @@ namespace ProcessPipeline.Nodes
             {
                 foreach (var p in t.ConnectedPorts)
                 {
-                    t.setData((p as OutputPort)!.getData()!);
+                    (t as InputPort)?.setData((p as OutputPort)!.getData()!);
                 }
             }
         }
@@ -270,7 +260,7 @@ namespace ProcessPipeline.Nodes
             {
                 foreach (var p in t.ConnectedPorts)
                 {
-                    (p as InputPort)!.setData(t.getData()!);
+                    (p as InputPort)!.setData((t as OutputPort)?.getData()!);
                 }
             }
         }
@@ -283,10 +273,20 @@ namespace ProcessPipeline.Nodes
                 foreach (var p in t.ConnectedPorts)
                 {
                     var inputPort = p as InputPort;
-                    inputPort?.setData(t.getData()!);
+                    inputPort?.setData((t as OutputPort)?.getData()!);
                     inputPort?.ParentNode.Process();
                 }
             }
+        }
+
+        public virtual string? GetData()
+        {
+            return null;
+        }
+
+        public virtual void SetData(string data)
+        {
+            
         }
     }
 }

@@ -60,6 +60,8 @@ public class VideoInputNode : Node
         _mediaPlayer.Play();
     }
 
+    public override Vector2 DefaultSize { get; } = new Vector2(200, 100);
+
     public override void Update(float deltaTime)
     {
         if (_framesQueue == null || _framesQueue.IsCompleted)

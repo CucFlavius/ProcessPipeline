@@ -13,6 +13,10 @@ namespace ProcessPipeline.Nodes
             From = from;
             To = to;
         }
+        
+        public Connection()
+        {
+        }
 
         /// <summary>
         /// Renders the connection as a bezier curve between two ports.

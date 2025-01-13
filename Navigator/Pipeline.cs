@@ -1,16 +1,18 @@
 ﻿using ImGuiNET;
 using Silk.NET.OpenGL;
 using System.Numerics;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace ProcessPipeline;
-using Serialization;
 using Nodes;
 
 public class Pipeline
 {
     private readonly InfiniteGrid _infiniteGrid;
+    
+    // Static counters for generating unique IDs
+    public static uint NodeIdCounter = 1;
+    public static uint PortIdCounter = 1001;
+    
     private Dictionary<uint, Node> Nodes { get; }
     private List<Connection> Connections;
 
@@ -306,80 +308,187 @@ public class Pipeline
         }
     }
 
-    public string SerializePipeline()
+    public void Serialize(string path)
     {
-        var pipelineData = new PipelineData
+        if (File.Exists(path))
+            File.Delete(path);
+        
+        using var sw = new StreamWriter(path);
+        
+        // Serialize nodes
+        sw.WriteLine($"Nodes:{Nodes.Count}");
+        foreach (var node in Nodes.Values)
         {
-            Nodes = Nodes.Values.ToList(),
-            Connections = Connections
-        };
-
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            //ReferenceHandler = ReferenceHandler.Preserve,
-            Converters =
+            var t = node.GetType();
+            sw.WriteLine($"Node:{t}");
+            sw.WriteLine($"Node.ID:{node.ID}");
+            sw.WriteLine($"Node.Title:{node.Title}");
+            sw.WriteLine($"Node.Position:{node.Position.X},{node.Position.Y}");
+            sw.WriteLine($"Node.Size:{node.Size.X},{node.Size.Y}");
+            var nodeData = node.GetData();
+            if (nodeData != null)
+                sw.WriteLine($"Node.Data:{nodeData}");
+            sw.WriteLine($"Node.Inputs:{node.Inputs.Count}");
+            foreach (var input in node.Inputs)
             {
-                new NodeConverter(),
-                new Vector2Converter(),
-                new PortConverter()
+                sw.WriteLine($"Input:{input.Name},{input.DType},{input.ID}");
             }
-        };
-
-        return JsonSerializer.Serialize(pipelineData, options);
-    }
-
-    public void DeserializePipeline(string json)
-    {
-        var options = new JsonSerializerOptions
-        {
-            //ReferenceHandler = ReferenceHandler.Preserve,
-            Converters =
+            sw.WriteLine($"Node.Outputs:{node.Outputs.Count}");
+            foreach (var output in node.Outputs)
             {
-                new NodeConverter(),
-                new Vector2Converter(),
-                new PortConverter()
-            }
-        };
-
-        var pipelineData = JsonSerializer.Deserialize<PipelineData>(json, options);
-
-        if (pipelineData == null)
-            throw new Exception("Failed to deserialize pipeline data.");
-
-        // Clear existing data
-        Nodes.Clear();
-        Connections.Clear();
-
-        // Reconstruct nodes
-        foreach (var node in pipelineData.Nodes)
-        {
-            Nodes[node.ID] = node;
-
-            // Assign ParentNode references in ports
-            foreach (var port in node.Inputs)
-            {
-                port.ParentNode = node;
-            }
-            foreach (var port in node.Outputs)
-            {
-                port.ParentNode = node;
+                sw.WriteLine($"Output:{output.Name},{output.DType},{output.ID}");
             }
         }
-
-        // Reconstruct connections
-        foreach (var connection in pipelineData.Connections)
+        
+        // Serialize connections
+        sw.WriteLine($"Connections:{Connections.Count}");
+        foreach (var connection in Connections)
         {
-            Connections.Add(connection);
-            
-            // Establish connections in ports
-            var fromPort = Nodes.Values.SelectMany(n => n.Outputs).FirstOrDefault(p => p.ID == connection.From.ID);
-            var toPort = Nodes.Values.SelectMany(n => n.Inputs).FirstOrDefault(p => p.ID == connection.To.ID);
+            sw.WriteLine($"Connection:{connection.From.ID},{connection.To.ID},{connection.From.ParentNode.ID},{connection.To.ParentNode.ID}");
+        }
+    }
 
-            if (fromPort != null && toPort != null)
+    public void Deserialize(string path)
+    {
+        if (!File.Exists(path))
+        {
+            Console.WriteLine("File not found.");
+            return;
+        }
+
+        using var sr = new StreamReader(path);
+
+        // Clear existing nodes
+        Nodes.Clear();
+        Node? bufferNode = null;
+        
+        Connections.Clear();
+
+        // Read and process each line
+        while (!sr.EndOfStream)
+        {
+            var line = sr.ReadLine();
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var lineParts = line.Split(':');
+            var lineType = lineParts[0];
+
+            switch (lineType)
             {
-                fromPort.ConnectedPorts?.Add(toPort);
-                toPort.ConnectedPort = fromPort;
+                case "Nodes":
+                    var totalNodes = int.Parse(lineParts[1]);
+                    break;
+                case "Node":
+                {
+                    var typeName = lineParts[1];
+                    var elementType = Type.GetType(typeName);
+
+                    if (elementType == null)
+                        continue;
+                    
+                    bufferNode = typeName switch
+                    {
+                        "ProcessPipeline.Nodes.TextInputNode" => new TextInputNode(),
+                        "ProcessPipeline.Nodes.LabelNode" => new LabelNode(),
+                        _ => (Node)Activator.CreateInstance(elementType)!
+                    };
+                    
+                    bufferNode.PortClickedHandler = OnPortClicked;
+                    break;
+                }
+                case "Node.ID" when bufferNode != null:
+                    bufferNode.ID = uint.Parse(lineParts[1]);
+                    Nodes.Add(bufferNode.ID, bufferNode);
+                    break;
+                case "Node.Title" when bufferNode != null:
+                    bufferNode.Title = lineParts[1];
+                    break;
+                case "Node.Position" when bufferNode != null:
+                {
+                    var positionParts = lineParts[1].Split(',');
+                    bufferNode.Position = new Vector2(
+                        float.Parse(positionParts[0]),
+                        float.Parse(positionParts[1])
+                    );
+                    break;
+                }
+                case "Node.Size" when bufferNode != null:
+                {
+                    var sizeParts = lineParts[1].Split(',');
+                    bufferNode.Size = new Vector2(
+                        float.Parse(sizeParts[0]),
+                        float.Parse(sizeParts[1])
+                    );
+                    break;
+                }
+                case "Node.Data" when bufferNode != null:
+                    bufferNode.SetData(lineParts[1]);
+                    break;
+                case "Node.Inputs" when bufferNode != null:
+                {
+                    var inputCount = int.Parse(lineParts[1]);
+                    for (var i = 0; i < inputCount; i++)
+                    {
+                        var inputLine = sr.ReadLine();
+                        if (string.IsNullOrWhiteSpace(inputLine))
+                            continue;
+                        var inputParts = inputLine.Split(',');
+                        bufferNode.Inputs[i].ID = uint.Parse(inputParts[2]);
+                        NodePort.UpdatePortIDCounter(bufferNode.Inputs[i].ID);
+                    }
+
+                    break;
+                }
+                case "Node.Outputs" when bufferNode != null:
+                {
+                    var outputCount = int.Parse(lineParts[1]);
+                    for (var i = 0; i < outputCount; i++)
+                    {
+                        var outputLine = sr.ReadLine();
+                        if (string.IsNullOrWhiteSpace(outputLine))
+                            continue;
+                        var outputParts = outputLine.Split(',');
+                        bufferNode.Outputs[i].ID = uint.Parse(outputParts[2]);
+                        NodePort.UpdatePortIDCounter(bufferNode.Outputs[i].ID);
+                    }
+
+                    break;
+                }
+                case "Connections":
+                    var totalConnections = int.Parse(lineParts[1]);
+                    break;
+                case "Connection":
+                {
+                    var connectionParts = lineParts[1].Split(',');
+                    var fromId = uint.Parse(connectionParts[0]);
+                    var toId = uint.Parse(connectionParts[1]);
+                    var fromNode = uint.Parse(connectionParts[2]);
+                    var toNode = uint.Parse(connectionParts[3]);
+
+                    OutputPort? fromPort = null;
+                    if (Nodes.TryGetValue(fromNode, out var onode))
+                    {
+                        fromPort = onode.Outputs.FirstOrDefault(p => p.ID == fromId);
+                    }
+                    InputPort? toPort = null;
+                    if (Nodes.TryGetValue(toNode, out var inode))
+                    {
+                        toPort = inode.Inputs.FirstOrDefault(p => p.ID == toId);
+                    }
+
+                    if (fromPort != null && toPort != null)
+                    {
+                        // Establish the new connection
+                        var newConnection = new Connection((OutputPort)fromPort, (InputPort)toPort);
+                        Connections.Add(newConnection);
+
+                        // Update the port connections
+                        fromPort.AddConnection(toPort);
+                        toPort.AddConnection(fromPort);
+                    }
+                    break;
+                }
             }
         }
     }

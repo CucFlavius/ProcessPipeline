@@ -1,9 +1,8 @@
-﻿using ImGuiNET;
-using System.Numerics;
-using System.Text.Json.Serialization;
+﻿using System.Numerics;
 
 namespace ProcessPipeline.Nodes
 {
+    
     public enum PortType
     {
         Input,
@@ -15,24 +14,15 @@ namespace ProcessPipeline.Nodes
         String,
     }
     
-    [JsonConverter(typeof(Serialization.PortConverter))]
     public class NodePort
     {
-        [JsonPropertyName("id")]
         public uint ID { get; set; } // Unique identifier
-        [JsonPropertyName("name")]
         public string Name { get; set; }
-        [JsonPropertyName("portType")]
         public PortType PType { get; set; }
-        [JsonPropertyName("dataType")]
         public DataType DType { get; set; }
-        
-        [JsonIgnore] public Node ParentNode { get; set; }
-
-        // For OutputPorts: multiple connections allowed
-        // For InputPorts: only one connection allowed
-        [JsonIgnore] public List<NodePort>? ConnectedPorts { get; set; } // Only for OutputPorts
-        [JsonIgnore] public NodePort? ConnectedPort { get; set; } // Only for InputPorts
+        public Node ParentNode { get; set; }
+        public List<NodePort>? ConnectedPorts { get; set; } // Only for OutputPorts
+        public NodePort? ConnectedPort { get; set; } // Only for InputPorts
 
         protected NodePort(string name, PortType pType, DataType dType, Node parent)
         {
@@ -101,13 +91,13 @@ namespace ProcessPipeline.Nodes
             //float spacing = nodeSize.Y / (total + 1);
             //float yPos = ParentNode._nodePos.Y * zoomLevel + spacing * (index + 1) + canvasPos.Y + gridPosition.Y;
             float nodeSpacing = 20 * zoomLevel;
-            float yPos = ParentNode.NodePos.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
+            float yPos = ParentNode.Position.Y * zoomLevel + (index * nodeSpacing) + canvasPos.Y + gridPosition.Y + (40 * zoomLevel);
             
             float xPos;
             if (PType == PortType.Input)
-                xPos = canvasPos.X + gridPosition.X + ParentNode.NodePos.X * zoomLevel + (10 * zoomLevel);
+                xPos = canvasPos.X + gridPosition.X + ParentNode.Position.X * zoomLevel + (10 * zoomLevel);
             else // Output
-                xPos = canvasPos.X + gridPosition.X + ParentNode.NodePos.X * zoomLevel - (10 * zoomLevel) + nodeSize.X;
+                xPos = canvasPos.X + gridPosition.X + ParentNode.Position.X * zoomLevel - (10 * zoomLevel) + nodeSize.X;
 
             return new Vector2(xPos, yPos);
         }
@@ -122,10 +112,9 @@ namespace ProcessPipeline.Nodes
             _portIdCounter = Math.Max(_portIdCounter, maxPortId);
         }
     }
-
+    
     public class InputPort : NodePort
     {
-        [JsonIgnore]
         public Action<object> setData { get; set; }
         
         public InputPort(string name, DataType dType, Node parent, Action<object> setData) : base(name, PortType.Input, dType, parent)
@@ -133,10 +122,9 @@ namespace ProcessPipeline.Nodes
             this.setData = setData;
         }
     }
-
+    
     public class OutputPort : NodePort
     {
-        [JsonIgnore]
         public Func<object?> getData { get; set; }
         
         public OutputPort(string name, DataType dType, Node parent, Func<object?> data) : base(name, PortType.Output, dType, parent)
