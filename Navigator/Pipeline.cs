@@ -41,14 +41,14 @@ public class Pipeline
         // Nodes.Add(nodeB.ID, nodeB);
         // var nodeC = new LabelNode("Hello World", new Vector2(100, -100), OnPortClicked);
         // Nodes.Add(nodeC.ID, nodeC);
-        var pathNode = new TextInputNode(new Vector2(-325, -125), OnPortClicked)
-        {
-            Text = "Lichtenstein_img_processing_test.png"
-        };
-        Nodes.Add(pathNode.Id, pathNode);
-        var imageNode = new LoadImageNode(new Vector2(100, -125), OnPortClicked);
-        (imageNode as IOpenGlNode).Gl = gl;
-        Nodes.Add(imageNode.Id, imageNode);
+        // var pathNode = new TextInputNode(new Vector2(-325, -125), OnPortClicked)
+        // {
+        //     Text = "Lichtenstein_img_processing_test.png"
+        // };
+        // Nodes.Add(pathNode.Id, pathNode);
+        // var imageNode = new LoadImageNode(new Vector2(100, -125), OnPortClicked);
+        // (imageNode as IOpenGlNode).Gl = gl;
+        // Nodes.Add(imageNode.Id, imageNode);
     }
     
     /// <summary>
@@ -283,6 +283,23 @@ public class Pipeline
                 var node = new LabelNode(string.Empty, mousePosInGrid, OnPortClicked);
                 Nodes.Add(node.Id, node);
             }
+            if (ImGui.MenuItem("Add Load Image Node"))
+            {
+                // Calculate mouse position relative to the canvas
+                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
+                
+                var node = new LoadImageNode(mousePosInGrid, OnPortClicked);
+                (node as IOpenGlNode).Gl = _gl;
+                Nodes.Add(node.Id, node);
+            }
+            if (ImGui.MenuItem("Add Path Node"))
+            {
+                // Calculate mouse position relative to the canvas
+                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
+                
+                var node = new PathNode(mousePosInGrid, OnPortClicked);
+                Nodes.Add(node.Id, node);
+            }
             ImGui.EndPopup();
         }
 
@@ -392,6 +409,14 @@ public class Pipeline
 
             if (lineParts[1] == null)
                 continue;
+            
+            if (lineParts.Length > 2)
+            {
+                for (var i = 2; i < lineParts.Length; i++)
+                {
+                    lineParts[1] += $":{lineParts[i]}";
+                }
+            }
             
             switch (lineType)
             {
