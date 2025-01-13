@@ -1,15 +1,18 @@
 ﻿using ImGuiNET;
 using Silk.NET.OpenGL;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ProcessPipeline;
+using Serialization;
 using Nodes;
 
 public class Pipeline
 {
     private readonly InfiniteGrid _infiniteGrid;
     private Dictionary<uint, Node> Nodes { get; }
-    private List<Connection> _connections;
+    private List<Connection> Connections;
 
     private Vector2 _gridPosition;
     private float _zoomLevel;
@@ -29,19 +32,19 @@ public class Pipeline
         _zoomLevel = 1.0f;
         _initialSetup = true;
 
-        _connections = new List<Connection>();
+        Connections = new List<Connection>();
 
         // Initialize nodes with custom content for debug purposes
         //Nodes.Add(Node.GenerateNodeID(), new LabelNode("Hello World", new Vector2(-325, -125), OnPortClicked));
         //Nodes.Add(Node.GenerateNodeID(), new ButtonNode("Click Me", new Vector2(100, 100), OnPortClicked));
-        var nodeA = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
-        nodeA.Text = "aaaaaaaaaa";
-        Nodes.Add(nodeA.ID, nodeA);
-        var nodeB = new TextInputNode(new Vector2(-325, 125), OnPortClicked);
-        nodeB.Text = "bbbbbbbbbb";
-        Nodes.Add(nodeB.ID, nodeB);
-        var nodeC = new LabelNode("Hello World", new Vector2(100, -100), OnPortClicked);
-        Nodes.Add(nodeC.ID, nodeC);
+        // var nodeA = new TextInputNode(new Vector2(-325, -125), OnPortClicked);
+        // nodeA.Text = "aaaaaaaaaa";
+        // Nodes.Add(nodeA.ID, nodeA);
+        // var nodeB = new TextInputNode(new Vector2(-325, 125), OnPortClicked);
+        // nodeB.Text = "bbbbbbbbbb";
+        // Nodes.Add(nodeB.ID, nodeB);
+        // var nodeC = new LabelNode("Hello World", new Vector2(100, -100), OnPortClicked);
+        // Nodes.Add(nodeC.ID, nodeC);
     }
     
     /// <summary>
@@ -65,18 +68,18 @@ public class Pipeline
                 if (_draggingPort.PType == PortType.Output && port.PType == PortType.Input)
                 {
                     // Check if the input port is already connected
-                    var existingConnection = _connections.FirstOrDefault(c => c.To == port);
+                    var existingConnection = Connections.FirstOrDefault(c => c.To == port);
                     if (existingConnection != null)
                     {
                         // Remove the existing connection
-                        _connections.Remove(existingConnection);
+                        Connections.Remove(existingConnection);
                         existingConnection.From.RemoveConnection(existingConnection.To);
                         existingConnection.To.RemoveConnection(existingConnection.From);
                     }
 
                     // Establish the new connection
                     var newConnection = new Connection((OutputPort)_draggingPort, (InputPort)port);
-                    _connections.Add(newConnection);
+                    Connections.Add(newConnection);
 
                     // Update the port connections
                     _draggingPort.AddConnection(port);
@@ -85,18 +88,18 @@ public class Pipeline
                 else if (_draggingPort.PType == PortType.Input && port.PType == PortType.Output)
                 {
                     // Check if the input port is already connected
-                    var existingConnection = _connections.FirstOrDefault(c => c.To == _draggingPort);
+                    var existingConnection = Connections.FirstOrDefault(c => c.To == _draggingPort);
                     if (existingConnection != null)
                     {
                         // Remove the existing connection
-                        _connections.Remove(existingConnection);
+                        Connections.Remove(existingConnection);
                         existingConnection.From.RemoveConnection(existingConnection.To);
                         existingConnection.To.RemoveConnection(existingConnection.From);
                     }
 
                     // Establish the new connection
                     var newConnection = new Connection((OutputPort)port, (InputPort)_draggingPort);
-                    _connections.Add(newConnection);
+                    Connections.Add(newConnection);
 
                     // Update the port connections
                     port.AddConnection(_draggingPort);
@@ -235,7 +238,7 @@ public class Pipeline
         }
         
         // Render existing connections
-        foreach (var connection in _connections)
+        foreach (var connection in Connections)
         {
             connection.Render(drawList, canvasPos, _gridPosition, _zoomLevel);
         }
@@ -300,6 +303,84 @@ public class Pipeline
         foreach (var rootNode in rootNodes)
         {
             rootNode.Process();
+        }
+    }
+
+    public string SerializePipeline()
+    {
+        var pipelineData = new PipelineData
+        {
+            Nodes = Nodes.Values.ToList(),
+            Connections = Connections
+        };
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            //ReferenceHandler = ReferenceHandler.Preserve,
+            Converters =
+            {
+                new NodeConverter(),
+                new Vector2Converter(),
+                new PortConverter()
+            }
+        };
+
+        return JsonSerializer.Serialize(pipelineData, options);
+    }
+
+    public void DeserializePipeline(string json)
+    {
+        var options = new JsonSerializerOptions
+        {
+            //ReferenceHandler = ReferenceHandler.Preserve,
+            Converters =
+            {
+                new NodeConverter(),
+                new Vector2Converter(),
+                new PortConverter()
+            }
+        };
+
+        var pipelineData = JsonSerializer.Deserialize<PipelineData>(json, options);
+
+        if (pipelineData == null)
+            throw new Exception("Failed to deserialize pipeline data.");
+
+        // Clear existing data
+        Nodes.Clear();
+        Connections.Clear();
+
+        // Reconstruct nodes
+        foreach (var node in pipelineData.Nodes)
+        {
+            Nodes[node.ID] = node;
+
+            // Assign ParentNode references in ports
+            foreach (var port in node.Inputs)
+            {
+                port.ParentNode = node;
+            }
+            foreach (var port in node.Outputs)
+            {
+                port.ParentNode = node;
+            }
+        }
+
+        // Reconstruct connections
+        foreach (var connection in pipelineData.Connections)
+        {
+            Connections.Add(connection);
+            
+            // Establish connections in ports
+            var fromPort = Nodes.Values.SelectMany(n => n.Outputs).FirstOrDefault(p => p.ID == connection.From.ID);
+            var toPort = Nodes.Values.SelectMany(n => n.Inputs).FirstOrDefault(p => p.ID == connection.To.ID);
+
+            if (fromPort != null && toPort != null)
+            {
+                fromPort.ConnectedPorts?.Add(toPort);
+                toPort.ConnectedPort = fromPort;
+            }
         }
     }
 }

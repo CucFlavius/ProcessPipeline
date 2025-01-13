@@ -9,7 +9,7 @@ namespace ProcessPipeline.Nodes
 
         public ButtonNode(string label, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
         {
-            _title = "Button Node";
+            Title = "Button Node";
             _buttonLabel = label;
 
             // Add one input and one output port

@@ -1,31 +1,39 @@
 ﻿using ImGuiNET;
 using System.Numerics;
-using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using ProcessPipeline.Serialization;
 
 namespace ProcessPipeline.Nodes
 {
     public delegate void PortClickedHandler(NodePort port, Node node);
     
+    [JsonConverter(typeof(NodeConverter))]
     public abstract class Node
     {
-        public static uint IDCounter = 1; // Static counter for unique node IDs
+        [JsonIgnore] public static uint IDCounter = 1; // Static counter for unique node IDs
+        [JsonPropertyName("id")]
         public uint ID { get; private set; }
-        public Vector2 NodePos;
-        public Vector2 NodeSize;
-        protected string _title; // Title of the node
-        protected bool _isSelected = false; // Tracks if the node is selected
+        [JsonPropertyName("position")]
+        public Vector2 NodePos { get; set; } // Position of the node
+        [JsonPropertyName("size")]
+        public Vector2 NodeSize { get; set; } // Size of the node
+        [JsonPropertyName("title")]
+        public string Title { get; set; } // Title of the node
+        [JsonIgnore] private bool _isSelected = false; // Tracks if the node is selected
 
-        public List<InputPort> Inputs { get; private set; }
-        public List<OutputPort> Outputs { get; private set; }
+        [JsonPropertyName("inputs")]
+        public List<InputPort> Inputs { get; set; }
+        [JsonPropertyName("outputs")]
+        public List<OutputPort> Outputs { get; set; }
 
         // Callback for port clicks
-        private PortClickedHandler _portClickedHandler;
+        [JsonIgnore] private PortClickedHandler _portClickedHandler;
 
         public Node(Vector2 pos, PortClickedHandler portClickedHandler)
         {
             NodePos = pos;
             NodeSize = new Vector2(200, 300);
-            _title = "Node";
+            Title = "Node";
             Inputs = new List<InputPort>();
             Outputs = new List<OutputPort>();
             ID = GenerateNodeID();
@@ -108,10 +116,10 @@ namespace ProcessPipeline.Nodes
                 ImGui.ColorConvertFloat4ToU32(titleBarColorStart));
 
             // Draw node title text in the title bar with scalable font
-            Vector2 titleTextSize = ImGui.CalcTextSize(_title);
+            Vector2 titleTextSize = ImGui.CalcTextSize(Title);
             Vector2 titleTextPos = titleBarRectMin + (new Vector2(nodeSize.X, titleBarHeight) - titleTextSize) / 2.0f;
             // Fallback to default font if the specified font is not found
-            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), _title);
+            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), Title);
 
             // Handle selection via content area
             //string contentId = $"Content_Node_{ID}";

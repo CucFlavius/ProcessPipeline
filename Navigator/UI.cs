@@ -1,4 +1,6 @@
 ﻿using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
@@ -12,7 +14,7 @@ public class UI
     private readonly GL _gl;
     private readonly ImGuiController? _controller;
     private Texture? _testTexture;
-    private readonly Pipeline _pipeline;
+    private Pipeline _pipeline;
 
     public UI(GL gl, IWindow window, IInputContext inputContext, Pipeline pipeline)
     {
@@ -60,11 +62,32 @@ public class UI
         ImGui.Begin("TOOLBAR", window_flags);
         ImGui.PopStyleVar();
   
+        
+        ImGui.SameLine();
         if (ImGui.Button("Run", new Vector2(100, toolbarSize)))
         {
             _pipeline.Process();
         }
-  
+        
+        ImGui.SameLine();
+        if (ImGui.Button("Save Pipeline", new Vector2(0, toolbarSize)))
+        {
+            string json = _pipeline.SerializePipeline();
+            File.WriteAllText("pipeline.json", json);
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Load Pipeline", new Vector2(0, toolbarSize)))
+        {
+            if (File.Exists("pipeline.json"))
+            {
+                string loadedJson = File.ReadAllText("pipeline.json");
+                Pipeline newPipeline = new Pipeline(_gl);
+                newPipeline.DeserializePipeline(loadedJson);
+                _pipeline = newPipeline;
+            }
+        }
+        
         ImGui.End();
     }
     

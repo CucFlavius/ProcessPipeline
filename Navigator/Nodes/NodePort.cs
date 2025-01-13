@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace ProcessPipeline.Nodes
 {
@@ -13,23 +14,27 @@ namespace ProcessPipeline.Nodes
     {
         String,
     }
-
+    
+    [JsonConverter(typeof(Serialization.PortConverter))]
     public class NodePort
     {
+        [JsonPropertyName("id")]
+        public uint ID { get; set; } // Unique identifier
+        [JsonPropertyName("name")]
         public string Name { get; set; }
+        [JsonPropertyName("portType")]
         public PortType PType { get; set; }
+        [JsonPropertyName("dataType")]
         public DataType DType { get; set; }
-        public Node ParentNode { get; set; }
         
-        public bool IsConnected { get; set; }
+        [JsonIgnore] public Node ParentNode { get; set; }
+
         // For OutputPorts: multiple connections allowed
         // For InputPorts: only one connection allowed
-        public List<NodePort> ConnectedPorts { get; set; } // Only for OutputPorts
-        public NodePort? ConnectedPort { get; set; } // Only for InputPorts
-        
-        public uint ID { get; set; } // Unique identifier
-        
-        public NodePort(string name, PortType pType, DataType dType, Node parent)
+        [JsonIgnore] public List<NodePort>? ConnectedPorts { get; set; } // Only for OutputPorts
+        [JsonIgnore] public NodePort? ConnectedPort { get; set; } // Only for InputPorts
+
+        protected NodePort(string name, PortType pType, DataType dType, Node parent)
         {
             Name = name;
             PType = pType;
@@ -111,10 +116,16 @@ namespace ProcessPipeline.Nodes
         {
             return $"{Name} {ID}".AsSpan();
         }
+
+        public static void UpdatePortIDCounter(uint maxPortId)
+        {
+            _portIdCounter = Math.Max(_portIdCounter, maxPortId);
+        }
     }
 
     public class InputPort : NodePort
     {
+        [JsonIgnore]
         public Action<object> setData { get; set; }
         
         public InputPort(string name, DataType dType, Node parent, Action<object> setData) : base(name, PortType.Input, dType, parent)
@@ -125,6 +136,7 @@ namespace ProcessPipeline.Nodes
 
     public class OutputPort : NodePort
     {
+        [JsonIgnore]
         public Func<object?> getData { get; set; }
         
         public OutputPort(string name, DataType dType, Node parent, Func<object?> data) : base(name, PortType.Output, dType, parent)

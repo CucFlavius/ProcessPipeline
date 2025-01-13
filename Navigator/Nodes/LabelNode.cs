@@ -1,20 +1,27 @@
 ﻿using ImGuiNET;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace ProcessPipeline.Nodes
 {
     public class LabelNode : Node
     {
-        private string? Text { get; set; }
+        [JsonPropertyName("label")]
+        public string? Text { get; set; }
 
         public LabelNode(string? text, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
         {
-            _title = "Label Node";
+            Title = "Label Node";
             Text = text;
 
             // Add one input and one output port
             AddInput("Input", DataType.String, (data) => { Text = data as string; });
             AddOutput("Output", DataType.String, () => Text);
+        }
+        
+        // Parameterless constructor for deserialization
+        public LabelNode() : base(Vector2.Zero, null)
+        {
         }
 
         protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
