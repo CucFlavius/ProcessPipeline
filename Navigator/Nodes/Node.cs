@@ -5,16 +5,19 @@ namespace ProcessPipeline.Nodes
 {
     public delegate void PortClickedHandler(NodePort? port, Node node);
     
-    public abstract class Node
+    public abstract partial class Node
     {
         private static uint _idCounter = 1; // Static counter for unique node IDs
         public uint Id { get; set; }
         public Vector2 Position { get; set; } // Position of the node
         public Vector2 Size { get; set; } // Size of the node
         public abstract string? Title { get; set; } // Title of the node
+        public abstract Flags flags { get; }
         public List<InputPort?> Inputs { get; set; }
         public List<OutputPort?> Outputs { get; set; }
         public abstract Vector2 DefaultSize { get; }
+        public virtual Vector2 MinSize => new Vector2(100, 100);
+        public virtual Vector2 MaxSize => new Vector2(500, 500);
         public PortClickedHandler? PortClickedHandler;
 
         protected Node(Vector2 pos, PortClickedHandler? portClickedHandler)
@@ -49,36 +52,30 @@ namespace ProcessPipeline.Nodes
         public virtual void Render(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel)
         {
             var drawList = ImGui.GetWindowDrawList();
+            
             var nodeSize = Size * zoomLevel; // Adjust size based on zoom level
             var nodeDarkColor = new Vector4(0.2f, 0.2f, 0.2f, 1.0f); // Main content area color
             var nodeBrightColor = new Vector4(0.3f, 0.3f, 0.3f, 1.0f); // Brighter color for selected nodes
-
+            
             // Calculate the node's position relative to the grid and canvas
             Vector2 adjustedPos = canvasPos + gridPosition + Position * zoomLevel;
-
-            // Draw background for the node
-            drawList.AddRectFilled(
-                adjustedPos,
-                adjustedPos + nodeSize,
-                ImGui.ColorConvertFloat4ToU32(nodeDarkColor),
-                5.0f);
             
             // Define the title bar height
             float titleBarHeight = 30.0f * zoomLevel; // Adjust height based on zoom level
-
+            
             // Define the rectangles for title bar and content
             Vector2 titleBarRectMin = adjustedPos;
             Vector2 titleBarRectMax = adjustedPos + new Vector2(nodeSize.X, titleBarHeight);
             Vector2 contentRectMin = titleBarRectMin + new Vector2(0, titleBarHeight);
             Vector2 contentRectMax = adjustedPos + nodeSize;
-
+            
             // Define unique ID for title bar
             string titleBarId = $"TitleBar_Node_{Id}";
-
+            
             // Create an invisible button over the title bar area to capture interactions
             ImGui.SetCursorScreenPos(titleBarRectMin);
             ImGui.InvisibleButton(titleBarId, new Vector2(nodeSize.X, titleBarHeight));
-
+            
             // Handle dragging via title bar
             if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
             {
@@ -90,23 +87,37 @@ namespace ProcessPipeline.Nodes
                 titleBarRectMin,
                 titleBarRectMax,
                 ImGui.ColorConvertFloat4ToU32(nodeBrightColor),
-                5.0f, ImDrawFlags.RoundCornersTop); // Radius: 10.0f for rounded corners
-
+                5.0f, ImDrawFlags.RoundCornersTop); // Rounded top corners
+            
             // Draw node title text in the title bar with scalable font
             var titleText = $"{Title}_{Id}";
             Vector2 titleTextSize = ImGui.CalcTextSize(titleText);
             Vector2 titleTextPos = titleBarRectMin + (new Vector2(nodeSize.X, titleBarHeight) - titleTextSize) / 2.0f;
-            // Fallback to default font if the specified font is not found
-            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f)), titleText);
+            drawList.AddText(titleTextPos, ImGui.ColorConvertFloat4ToU32(Vector4.One), titleText);
             
             // Redraw the content area with modified color
             drawList.AddRectFilled(
                 contentRectMin,
                 contentRectMax,
                 ImGui.ColorConvertFloat4ToU32(nodeDarkColor),
-                5.0f, ImDrawFlags.RoundCornersBottom); // Radius: 10.0f for rounded corners
+                5.0f, ImDrawFlags.RoundCornersBottom); // Rounded bottom corners
+            
+            DrawContextMenu();
 
-            // Implement context menu
+            // Render input and output ports (existing code)
+            RenderInputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
+            RenderOutputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
+            
+            // Render resize handles
+            RenderResizeHandles(adjustedPos, nodeSize, zoomLevel, titleBarHeight);
+            
+            // Call the RenderContent method for custom content
+            RenderContent(drawList, contentRectMin, contentRectMax, zoomLevel);
+        }
+
+        private void DrawContextMenu()
+        {
+            // Implement context menu (existing code)
             if (ImGui.BeginPopupContextItem($"Popup_Node_{Id}"))
             {
                 if (ImGui.MenuItem("Delete Node"))
@@ -125,17 +136,120 @@ namespace ProcessPipeline.Nodes
             {
                 ImGui.OpenPopup($"Popup_Node_{Id}");
             }
-
-            // Render input ports
-            RenderInputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
-
-            // Render output ports
-            RenderOutputPorts(canvasPos, gridPosition, zoomLevel, nodeSize, drawList);
-
-            // Call the RenderContent method for custom content
-            RenderContent(drawList, contentRectMin, contentRectMax, zoomLevel);
         }
 
+        private void RenderResizeHandles(Vector2 nodePos, Vector2 nodeSize, float zoomLevel, float titleBarHeight)
+        {
+            // Adjust handle size based on zoom level
+            var handleThickness = HANDLE_THICKNESS * zoomLevel;
+
+            var drawList = ImGui.GetWindowDrawList();
+
+            foreach (var handle in ResizeHandles)
+            {
+                switch (handle.IdSuffix)
+                {
+                    // Skip handles based on flags
+                    case ResizeHandle.Type.Left or ResizeHandle.Type.Right or
+                        ResizeHandle.Type.BottomLeft or ResizeHandle.Type.BottomRight when
+                        !flags.HasFlag(Flags.ResizableX):
+                    case ResizeHandle.Type.Bottom or ResizeHandle.Type.BottomLeft or
+                        ResizeHandle.Type.BottomRight when
+                        !flags.HasFlag(Flags.ResizableY):
+                        continue;
+                }
+
+                Vector2 handlePos;
+                Vector2 handleSize;
+
+                switch (handle.IdSuffix)
+                {
+                    case ResizeHandle.Type.Left:
+                        handlePos = nodePos + new Vector2(0, titleBarHeight);
+                        handleSize = new Vector2(handleThickness, nodeSize.Y - titleBarHeight - handleThickness);
+                        break;
+                    case ResizeHandle.Type.Right:
+                        handlePos = nodePos + new Vector2(nodeSize.X - handleThickness, titleBarHeight);
+                        handleSize = new Vector2(handleThickness, nodeSize.Y - titleBarHeight - handleThickness);
+                        break;
+                    case ResizeHandle.Type.Bottom:
+                        handlePos = nodePos + new Vector2(handleThickness, nodeSize.Y - handleThickness);
+                        handleSize = new Vector2(nodeSize.X - 2 * handleThickness, handleThickness);
+                        break;
+                    case ResizeHandle.Type.BottomLeft:
+                        handlePos = nodePos + new Vector2(0, nodeSize.Y - handleThickness);
+                        handleSize = new Vector2(handleThickness, handleThickness);
+                        break;
+                    case ResizeHandle.Type.BottomRight:
+                        handlePos = nodePos + new Vector2(nodeSize.X - handleThickness, nodeSize.Y - handleThickness);
+                        handleSize = new Vector2(handleThickness, handleThickness);
+                        break;
+                    default:
+                        continue;
+                }
+
+                // Define unique ID for the handle
+                var handleId = $"ResizeHandle_{Id}_{handle.IdSuffix}";
+
+                // Create an invisible button over the handle area to capture interactions
+                ImGui.SetCursorScreenPos(handlePos);
+                ImGui.InvisibleButton(handleId, handleSize);
+
+                if (ImGui.IsItemClicked())
+                {
+                    _resizeMouseStartPos = ImGui.GetMousePos();
+                    _resizeFrameStartPos = Position;
+                    _resizeFrameStartSize = Size;
+                }
+                
+                // Optional: Visual Indicator (e.g., semi-transparent overlay)
+                if (ImGui.IsItemHovered())
+                {
+                    // Draw a semi-transparent rectangle to indicate the handle
+                    drawList.AddRectFilled(handlePos, handlePos + handleSize, ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.1f)));
+
+                    // Optionally, change the cursor icon
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeAll); // Adjust based on handle type
+                }
+
+                // Handle dragging
+                if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    var sizeDiff = (ImGui.GetMousePos() - _resizeMouseStartPos) / zoomLevel;
+
+                    var newSize = Size;
+                    var newPosition = Position;
+
+                    // Adjust size and position based on handle direction
+                    if (handle.Direction.X != 0)
+                    {
+                        newSize.X = _resizeFrameStartSize.X + (sizeDiff.X * handle.Direction.X);
+
+                        if (handle.Direction.X < 0)
+                        {
+                            newPosition.X = _resizeFrameStartPos.X + sizeDiff.X;
+                        }
+                    }
+
+                    if (handle.Direction.Y != 0)
+                    {
+                        newSize.Y = _resizeFrameStartSize.Y + sizeDiff.Y;
+                    }
+
+                    // Enforce minimum and maximum size constraints
+                    if (newSize.X < MinSize.X || newSize.Y < MinSize.Y)
+                        continue;
+                    
+                    if (newSize.X > MaxSize.X || newSize.Y > MaxSize.Y)
+                        continue;
+                    
+                    // Update the node's size and position
+                    Size = newSize;
+                    Position = newPosition;
+                }
+            }
+        }
+        
         private void RenderOutputPorts(Vector2 canvasPos, Vector2 gridPosition, float zoomLevel, Vector2 nodeSize,
             ImDrawListPtr drawList)
         {

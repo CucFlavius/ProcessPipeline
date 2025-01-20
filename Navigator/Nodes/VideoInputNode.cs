@@ -26,6 +26,7 @@ public class VideoInputNode : Node
     private const int _bytesPerPixel = 4;
     private byte[]? _currentFrameBuffer;
     private volatile bool _stopRequested = false;
+    public override Flags flags => Flags.ResizableX | Flags.ResizableY;
     
     public VideoInputNode(GL? gl, string path, Vector2 pos, PortClickedHandler pcl) : base(pos, pcl)
     {

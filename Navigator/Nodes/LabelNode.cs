@@ -8,6 +8,7 @@ namespace ProcessPipeline.Nodes
         private string? Text { get; set; }
         public sealed override Vector2 DefaultSize { get; } = new Vector2(200, 100);
         public override string? Title { get; set; } = "Label Node";
+        public override Flags flags => Flags.ResizableX;
 
         public LabelNode(string? text, Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
         {

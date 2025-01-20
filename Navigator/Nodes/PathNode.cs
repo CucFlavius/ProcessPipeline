@@ -11,6 +11,7 @@ public class PathNode : Node
     public string? Path { get; set; }
     public sealed override Vector2 DefaultSize => new Vector2(300, 100);
     public override string? Title { get; set; } = "Text Input Node";
+    public override Flags flags => Flags.ResizableX;
 
     public PathNode(Vector2 pos, PortClickedHandler portClickedHandler) : base(pos, portClickedHandler)
     {

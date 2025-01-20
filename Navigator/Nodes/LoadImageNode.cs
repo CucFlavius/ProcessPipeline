@@ -10,6 +10,7 @@ public class LoadImageNode : Node, IOpenGlNode
 {
     public sealed override Vector2 DefaultSize { get; } = new Vector2(200, 200);
     public override string? Title { get; set; } = "Load Image Node";
+    public override Flags flags => Flags.ResizableX | Flags.ResizableY;
 
     private string? _imagePath;
     private Image<Rgba32>? _imageData;
