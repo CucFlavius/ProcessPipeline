@@ -29,38 +29,10 @@ public class PathNode : Node
     
     protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
     {
-        // Render the text input field
-        var inputSize = new Vector2(contentMax.X - contentMin.X, 30 * zoomLevel);
-        var inputPos = contentMin + (new Vector2(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y) - inputSize) / 2.0f;
-        ImGui.SetCursorScreenPos(inputPos);
-        
-        // push item width
-        ImGui.PushItemWidth(inputSize.X - 100 * zoomLevel);
-        var text = Path ?? string.Empty;
-        
-        if (ImGui.Button("Browse"))
-        {
-            try
-            {
-                // Open folder picker
-                var result = Dialog.FileOpen();
-                if (result.IsOk && !string.IsNullOrEmpty(result.Path))
-                {
-                    Path = result.Path;
-                    text = result.Path;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error opening folder picker: {ex.Message}");
-            }
-        }
-        
-        ImGui.SameLine();
-        if (ImGui.InputText($"##TextInput_Node_{Id}", ref text, 1000))
-        {
-            Path = text;
-        }
+        var path = Path;
+        var contentPos = contentMin + new Vector2(10, 0);
+        var contentWidth = contentMax.X - contentMin.X - 20;
+        DrawPathInput(contentPos + new Vector2(0, 20), contentWidth, zoomLevel, ref path);
     }
 
     public override string GetData()

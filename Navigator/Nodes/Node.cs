@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using System.Numerics;
+using NativeFileDialogSharp;
 
 namespace ProcessPipeline.Nodes
 {
@@ -395,6 +396,43 @@ namespace ProcessPipeline.Nodes
         public virtual void SetData(string? data)
         {
             
+        }
+        
+        protected void DrawPathInput(Vector2 position, float width, float zoomLevel, ref string? path)
+        {
+            // Render the text input field
+            ImGui.SetCursorScreenPos(position);
+            
+            // push item width
+            var text = path ?? string.Empty;
+        
+            if (ImGui.Button("Browse"))
+            {
+                try
+                {
+                    // Open folder picker
+                    var result = Dialog.FileOpen();
+                    if (result.IsOk && !string.IsNullOrEmpty(result.Path))
+                    {
+                        path = result.Path;
+                        text = result.Path;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error opening folder picker: {ex.Message}");
+                }
+            }
+
+            var buttonWidth = ImGui.GetItemRectSize().X;
+            var paddingWidth = ImGui.GetStyle().FramePadding.X;
+        
+            ImGui.SameLine();
+            ImGui.PushItemWidth(width - (buttonWidth + paddingWidth));
+            if (ImGui.InputText($"##TextInput_Node_{Id}", ref text, 1000))
+            {
+                path = text;
+            }
         }
     }
 }
