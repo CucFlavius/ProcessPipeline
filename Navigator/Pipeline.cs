@@ -231,12 +231,11 @@ public class Pipeline
                     OutputPort port => _draggingNodePort.Outputs.IndexOf(port),
                     _ => -1
                 };
+                var nodeSize = _draggingPort.ParentNode.Size * _zoomLevel;
                 var startPos = _draggingPort.GetScreenPosition(canvasPos,
                     _gridPosition,
                     _zoomLevel,
-                    new Vector2(200,
-                        300) *
-                    _zoomLevel,
+                    nodeSize,
                     index); // Placeholder indices
 
                 var endPos = ImGui.GetIO().MousePos;

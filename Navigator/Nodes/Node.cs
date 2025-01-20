@@ -398,14 +398,11 @@ namespace ProcessPipeline.Nodes
             
         }
         
-        protected void DrawPathInput(Vector2 position, float width, float zoomLevel, ref string? path)
+        protected void DrawPathInput(Vector2 position, float width, float zoomLevel, ref string text)
         {
             // Render the text input field
             ImGui.SetCursorScreenPos(position);
-            
-            // push item width
-            var text = path ?? string.Empty;
-        
+    
             if (ImGui.Button("Browse"))
             {
                 try
@@ -414,7 +411,6 @@ namespace ProcessPipeline.Nodes
                     var result = Dialog.FileOpen();
                     if (result.IsOk && !string.IsNullOrEmpty(result.Path))
                     {
-                        path = result.Path;
                         text = result.Path;
                     }
                 }
@@ -426,13 +422,14 @@ namespace ProcessPipeline.Nodes
 
             var buttonWidth = ImGui.GetItemRectSize().X;
             var paddingWidth = ImGui.GetStyle().FramePadding.X;
-        
+
             ImGui.SameLine();
             ImGui.PushItemWidth(width - (buttonWidth + paddingWidth));
             if (ImGui.InputText($"##TextInput_Node_{Id}", ref text, 1000))
             {
-                path = text;
+                // `text` is already updated via ref
             }
+            ImGui.PopItemWidth(); // Don't forget to pop the item width
         }
     }
 }

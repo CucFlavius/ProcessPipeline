@@ -12,6 +12,8 @@ namespace ProcessPipeline
     {
         private uint _handle;
         private readonly GL? _gl;
+        public int Width { get; }
+        public int Height { get; }
 
         public unsafe Texture(GL? gl, string path)
         {
@@ -22,6 +24,9 @@ namespace ProcessPipeline
 
             // Process the image to fit the desired aspect ratio and POT dimensions.
             var processedImage = ProcessImage(image);
+            
+            Width = processedImage.Width;
+            Height = processedImage.Height;
 
             // OpenGL expects the image origin at the bottom-left corner, so flip vertically.
             processedImage.Mutate<Rgba32>(ctx => ctx.Flip(FlipMode.Vertical));
@@ -46,6 +51,9 @@ namespace ProcessPipeline
             // Process the image to fit the desired aspect ratio and POT dimensions.
             var processedImage = ProcessImage(image);
 
+            Width = processedImage.Width;
+            Height = processedImage.Height;
+            
             // OpenGL expects the image origin at the bottom-left corner, so flip vertically.
             processedImage.Mutate<Rgba32>(ctx => ctx.Flip(FlipMode.Vertical));
 

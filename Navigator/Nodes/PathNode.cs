@@ -8,7 +8,7 @@ namespace ProcessPipeline.Nodes;
 
 public class PathNode : Node
 {
-    public string? Path { get; set; }
+    public string? Path;
     public sealed override Vector2 DefaultSize => new Vector2(300, 100);
     public override string? Title { get; set; } = "Text Input Node";
     public override Flags flags => Flags.ResizableX;
@@ -29,10 +29,9 @@ public class PathNode : Node
     
     protected override void RenderContent(ImDrawListPtr drawList, Vector2 contentMin, Vector2 contentMax, float zoomLevel)
     {
-        var path = Path;
-        var contentPos = contentMin + new Vector2(10, 0);
-        var contentWidth = contentMax.X - contentMin.X - 20;
-        DrawPathInput(contentPos + new Vector2(0, 20), contentWidth, zoomLevel, ref path);
+        var contentPos = contentMin + new Vector2(10 * zoomLevel, 0);
+        var contentWidth = contentMax.X - contentMin.X - 20 * zoomLevel;
+        DrawPathInput(contentPos + new Vector2(0, 20 * zoomLevel), contentWidth, zoomLevel, ref Path);
     }
 
     public override string GetData()
