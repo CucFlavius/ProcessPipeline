@@ -266,37 +266,35 @@ public class Pipeline
         // Implement context menu
         if (ImGui.BeginPopupContextItem($"Popup_Canvas"))
         {
+            // Calculate mouse position relative to the canvas
+            var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
+            
             if (ImGui.MenuItem("Add Text Input Node"))
             {
-                // Calculate mouse position relative to the canvas
-                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
-                
                 var node = new TextInputNode(mousePosInGrid, OnPortClicked);
                 Nodes.Add(node.Id, node);
             }
             if (ImGui.MenuItem("Add Label Node"))
             {
-                // Calculate mouse position relative to the canvas
-                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
-                
                 var node = new LabelNode(string.Empty, mousePosInGrid, OnPortClicked);
                 Nodes.Add(node.Id, node);
             }
             if (ImGui.MenuItem("Add Load Image Node"))
             {
-                // Calculate mouse position relative to the canvas
-                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
-                
                 var node = new LoadImageNode(mousePosInGrid, OnPortClicked);
                 (node as IOpenGlNode).Gl = _gl;
                 Nodes.Add(node.Id, node);
             }
             if (ImGui.MenuItem("Add Path Node"))
             {
-                // Calculate mouse position relative to the canvas
-                var mousePosInGrid = (io.MousePos - canvasPos - _gridPosition) / _zoomLevel;
-                
                 var node = new PathNode(mousePosInGrid, OnPortClicked);
+                Nodes.Add(node.Id, node);
+            }
+
+            if (ImGui.MenuItem("Add Video Input Node"))
+            {
+                var node = new VideoInputNode(mousePosInGrid, OnPortClicked);
+                (node as IOpenGlNode).Gl = _gl;
                 Nodes.Add(node.Id, node);
             }
             ImGui.EndPopup();

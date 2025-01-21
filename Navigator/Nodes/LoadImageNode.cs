@@ -40,7 +40,7 @@ public class LoadImageNode : Node, IOpenGlNode
         if (_bufferTexture == null)
             return;
 
-        var aspect = _bufferTexture.Height / _bufferTexture.Width;
+        var aspect = (float)_bufferTexture.Height / _bufferTexture.Width;
         var imageSize = new Vector2(Math.Min(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y * aspect), Math.Min(contentMax.Y - contentMin.Y, contentMax.X - contentMin.X / aspect));
         var imagePos = contentMin + (new Vector2(contentMax.X - contentMin.X, contentMax.Y - contentMin.Y) - imageSize) / 2.0f;
         ImGui.SetCursorScreenPos(imagePos);
