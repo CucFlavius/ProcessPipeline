@@ -107,9 +107,11 @@ public class VideoInputNode : Node, IOpenGlNode
         
         if (_framesQueue.TryTake(out var frame))
         {
-            _bufferTexture?.Dispose();
-            _bufferTexture = null;
-            _bufferTexture = new Texture(Gl, frame);
+            //_bufferTexture?.Dispose();
+            if (_bufferTexture == null)
+                _bufferTexture = new Texture(Gl, frame);
+            else
+                _bufferTexture.SetData(frame);
             frame.Dispose();
         }
     }

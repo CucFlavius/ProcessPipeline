@@ -12,93 +12,146 @@ namespace ProcessPipeline
     {
         private uint _handle;
         private readonly GL? _gl;
-        public int Width { get; }
-        public int Height { get; }
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+        private byte[]? _pixels;
+        private bool _disposed = false;
 
+        // Constructors
         public unsafe Texture(GL? gl, string path)
         {
             _gl = gl;
-
-            // Load the image using ImageSharp.
-            using var image = Image.Load<Rgba32>(path);
-
-            // Process the image to fit the desired aspect ratio and POT dimensions.
-            var processedImage = ProcessImage(image);
-            
-            Width = processedImage.Width;
-            Height = processedImage.Height;
-
-            // OpenGL expects the image origin at the bottom-left corner, so flip vertically.
-            processedImage.Mutate<Rgba32>(ctx => ctx.Flip(FlipMode.Vertical));
-
-            // Extract pixel data into a byte array.
-            byte[] pixelData = ExtractPixelData(processedImage);
-
-            // Load the processed image into OpenGL.
-            fixed (byte* dataPtr = pixelData)
-            {
-                Load(dataPtr, (uint)processedImage.Width, (uint)processedImage.Height);
-            }
-
-            // Dispose the processed image.
-            processedImage.Dispose();
+            LoadFromPath(path);
         }
 
         public unsafe Texture(GL? gl, Image<Rgba32> image)
         {
             _gl = gl;
-
-            // Process the image to fit the desired aspect ratio and POT dimensions.
-            var processedImage = ProcessImage(image);
-
-            Width = processedImage.Width;
-            Height = processedImage.Height;
-            
-            // OpenGL expects the image origin at the bottom-left corner, so flip vertically.
-            processedImage.Mutate<Rgba32>(ctx => ctx.Flip(FlipMode.Vertical));
-
-            // Extract pixel data into a byte array.
-            byte[] pixelData = ExtractPixelData(processedImage);
-
-            // Load the processed image into OpenGL.
-            fixed (byte* dataPtr = pixelData)
-            {
-                Load(dataPtr, (uint)processedImage.Width, (uint)processedImage.Height);
-            }
-
-            // Dispose the processed image.
-            processedImage.Dispose();
+            LoadFromImage(image);
         }
 
         public unsafe Texture(GL? gl, Span<byte> data, uint width, uint height)
         {
             _gl = gl;
-            // We want the ability to create a texture using data generated from code as well.
-            fixed (byte* d = &data[0])
-            {
-                Load(d, width, height);
-            }
+            LoadFromData(data, width, height);
         }
 
-        private unsafe void Load(void* data, uint width, uint height)
+        // SetData Methods
+        public unsafe void SetData(string path)
+        {
+            EnsureNotDisposed();
+            using var image = Image.Load<Rgba32>(path);
+            SetDataInternal(image);
+        }
+
+        public unsafe void SetData(Image<Rgba32> image)
+        {
+            EnsureNotDisposed();
+            SetDataInternal(image);
+        }
+
+        public unsafe void SetData(ReadOnlySpan<byte> data, uint width, uint height)
+        {
+            EnsureNotDisposed();
+            SetDataInternal(data, width, height);
+        }
+
+        // Private Load Methods
+        private unsafe void LoadFromPath(string path)
+        {
+            using var image = Image.Load<Rgba32>(path);
+            SetDataInternal(image);
+        }
+
+        private unsafe void LoadFromImage(Image<Rgba32> image)
+        {
+            SetDataInternal(image);
+        }
+
+        private unsafe void LoadFromData(ReadOnlySpan<byte> data, uint width, uint height)
+        {
+            SetDataInternal(data, width, height);
+        }
+
+        // Internal SetData Implementations
+        private unsafe void SetDataInternal(Image<Rgba32> image)
+        {
+            // Process the image
+            var processedImage = ProcessImage(image);
+            
+            Width = processedImage.Width;
+            Height = processedImage.Height;
+
+            // Flip vertically
+            processedImage.Mutate(ctx => ctx.Flip(FlipMode.Vertical));
+
+            // Extract pixel data
+            byte[] pixelData = ExtractPixelData(processedImage);
+
+            // Bind the texture
+            Bind();
+
+            // Upload data using unsafe pointer
+            fixed (byte* p = pixelData)
+            {
+                _gl?.TexImage2D(TextureTarget.Texture2D, 0, (int)InternalFormat.Rgba, (uint)processedImage.Width, (uint)processedImage.Height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, p);
+            }
+
+            // Set texture parameters (if not already set)
+            SetTextureParameters();
+
+            // Generate mipmaps
+            _gl?.GenerateMipmap(TextureTarget.Texture2D);
+
+            // Dispose processed image
+            processedImage.Dispose();
+        }
+
+        private unsafe void SetDataInternal(ReadOnlySpan<byte> data, uint width, uint height)
+        {
+            Width = (int)width;
+            Height = (int)height;
+
+            // Ensure pixel buffer is the correct size
+            if (_pixels == null || _pixels.Length != width * height * 4)
+            {
+                _pixels = new byte[width * height * 4];
+            }
+
+            data.CopyTo(_pixels.AsSpan());
+
+            // Bind the texture
+            Bind();
+
+            // Upload data using unsafe pointer
+            fixed (byte* p = _pixels)
+            {
+                _gl?.TexImage2D(TextureTarget.Texture2D, 0, (int)InternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, p);
+            }
+
+            // Set texture parameters (if not already set)
+            SetTextureParameters();
+
+            // Generate mipmaps
+            _gl?.GenerateMipmap(TextureTarget.Texture2D);
+        }
+
+        // Helper Methods
+        private void SetTextureParameters()
         {
             if (_gl == null) return;
 
-            // Generate the OpenGL handle.
-            _handle = _gl.GenTexture();
-            Bind();
-
-            // Specify the texture data.
-            _gl.TexImage2D(TextureTarget.Texture2D, 0, (int)InternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, data);
-
-            // Set texture parameters.
+            // Set texture parameters only once or if needed
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.Repeat);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.Repeat);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Linear);
             _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+        }
 
-            // Generate mipmaps.
-            _gl.GenerateMipmap(TextureTarget.Texture2D);
+        private void EnsureNotDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(Texture));
         }
 
         private void Bind(TextureUnit textureSlot = TextureUnit.Texture0)
@@ -112,11 +165,22 @@ namespace ProcessPipeline
 
         public void Dispose()
         {
-            // Delete the OpenGL texture handle.
-            _gl?.DeleteTexture(_handle);
+            if (!_disposed)
+            {
+                // Delete the OpenGL texture handle.
+                _gl?.DeleteTexture(_handle);
+                _disposed = true;
+            }
         }
 
-        public nint Handle => (nint)_handle;
+        public nint Handle
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return (nint)_handle;
+            }
+        }
 
         /// <summary>
         /// Processes the image to fit into a POT dimension with the nearest aspect ratio (1:1, 1:2, 2:1).
@@ -193,7 +257,6 @@ namespace ProcessPipeline
             }
 
             // Create a new transparent image with POT dimensions.
-            // Instead of using Mutate to Fill, initialize with transparent background.
             var finalImage = new Image<Rgba32>(potWidth, potHeight, new Rgba32(0, 0, 0, 0));
 
             // Calculate the position to center the resized image.
@@ -201,7 +264,7 @@ namespace ProcessPipeline
             int posY = (potHeight - resizedImage.Height) / 2;
 
             // Draw the resized image onto the transparent POT image.
-            finalImage.Mutate<Rgba32>(ctx => ctx.DrawImage(resizedImage, new Point(posX, posY), 1f));
+            finalImage.Mutate(ctx => ctx.DrawImage(resizedImage, new Point(posX, posY), 1f));
 
             // Dispose the resized image.
             resizedImage.Dispose();
@@ -216,28 +279,31 @@ namespace ProcessPipeline
         /// <returns>A byte array containing pixel data in RGBA order.</returns>
         private byte[] ExtractPixelData(Image<Rgba32> image)
         {
-            int width = image.Width;
-            int height = image.Height;
-            byte[] pixels = new byte[width * height * 4]; // 4 bytes per pixel (RGBA)
+            var width = image.Width;
+            var height = image.Height;
+            if (_pixels == null || _pixels.Length != width * height * 4)
+            {
+                _pixels = new byte[width * height * 4]; // 4 bytes per pixel (RGBA)
+            }
 
-            for (int y = 0; y < height; y++)
+            for (var y = 0; y < height; y++)
             {
                 // ImageSharp's row indexing starts at the top, so to flip vertically:
-                int flippedY = height - y - 1;
+                var flippedY = height - y - 1;
                 var pixelRowSpan = image.DangerousGetPixelRowMemory(y).Span;
 
-                for (int x = 0; x < width; x++)
+                for (var x = 0; x < width; x++)
                 {
-                    int pixelIndex = (flippedY * width + x) * 4;
-                    Rgba32 pixel = pixelRowSpan[x];
-                    pixels[pixelIndex + 0] = pixel.R;
-                    pixels[pixelIndex + 1] = pixel.G;
-                    pixels[pixelIndex + 2] = pixel.B;
-                    pixels[pixelIndex + 3] = pixel.A;
+                    var pixelIndex = (flippedY * width + x) * 4;
+                    var pixel = pixelRowSpan[x];
+                    _pixels[pixelIndex + 0] = pixel.R;
+                    _pixels[pixelIndex + 1] = pixel.G;
+                    _pixels[pixelIndex + 2] = pixel.B;
+                    _pixels[pixelIndex + 3] = pixel.A;
                 }
             }
 
-            return pixels;
+            return _pixels;
         }
 
         /// <summary>
